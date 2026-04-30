@@ -1,4 +1,7 @@
 <script setup>
+//Homeview displays the landing page for our app, DriftDater
+//It provides entry points for new users to register/login
+//Version 1 - Basic landing page
 </script>
 
 <template>
@@ -10,7 +13,8 @@
           Create your profile, discover compatible matches, and connect with people
           who share your interests.
         </p>
-
+        
+        <!-- Navigation buttons route users to authentication pages. -->
         <div class="hero-actions">
           <RouterLink to="/register" class="btn primary">Get Started</RouterLink>
           <RouterLink to="/login" class="btn secondary">Login</RouterLink>
@@ -28,6 +32,7 @@
   justify-content: center;
 }
 
+/* Limits hero content width so the page remains readable on large screens. */
 .hero-section {
   width: 100%;
   max-width: 900px;
@@ -47,6 +52,7 @@
   margin: 0 auto 2rem;
 }
 
+/* Keeps call-to-action buttons aligned with spacing between them. */
 .hero-actions {
   display: flex;
   gap: 1rem;
