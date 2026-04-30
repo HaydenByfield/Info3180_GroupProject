@@ -37,4 +37,11 @@ $ python -m venv venv (you may need to use python3 instead)
 $ source venv/bin/activate (or .\venv\Scripts\activate on Windows)
 $ pip install -r requirements.txt
 $ flask --app app --debug run
+# Create Secret Key
+$ python -c 'import secrets; print(secrets.token_hex())'
+
+$ pip install python-dotenv
+$ pip install flask-sqlalchemy
+$ pip install flask-migrate
+$ pip install flask-wtf
 ```
