@@ -9,7 +9,7 @@ from app import app, db
 from flask import render_template, request, jsonify, send_file
 from flask_login import current_user
 from sqlalchemy import text, func
-from app.models import Interactions, Users, Preferences, UserInterests, Interest, Favorite
+from app.models import Interactions, Users, Preferences, UserInterests, Interest, Favorite, Chat, ChatRoom
 
 
 ###
@@ -86,13 +86,13 @@ def matchMade():
     for i in interact:
         # Checks if the current user Id and the id of the other user is a match
         if checkMutualConnections(current_user.id, i.to_user):
+            createChat(current_user.id, i.to_user)
             # Create a list of matched users for the current_user
             matches.append({
                 'user_id': i.to_user
             })
     return jsonify(matches), 200
 
-@app.route('/api/checkmatch')
 def checkMutualConnections(user1, user2):
     # Check if the user1 liked user2
     interact_1 = Interactions.query.filter_by(
@@ -106,6 +106,7 @@ def checkMutualConnections(user1, user2):
     if interact_1 and interact_2:
         return True
     return False
+
 
 @app.route('/api/favorite', methods=['POST'])
 def add_favourite():
@@ -136,6 +137,84 @@ def get_favorties():
         } for f in favorite
     ]
     return jsonify({'favourite': f_lst})
+
+
+def createChat(user1, user2):
+    # Ensures no duplicate chatroom
+    duplicate = ChatRoom.query.filter(
+        ((ChatRoom.chat1_id == user1) & (ChatRoom.chat2_id == user2)) |
+        ((ChatRoom.chat1_id == user2) & (ChatRoom.chat2_id == user1))
+    ).first()
+
+    # Creates a Chatroom and Stores it in the database
+    if not duplicate:
+        room = ChatRoom (
+            chat1_id = user1, 
+            chat2_id = user2
+        )
+        db.session.add(room)
+        db.session.commit()
+    return jsonify({'Message':'ChatRoom was created'})
+        
+@app.route('/api/getChat', methods=['GET'])
+def get_chat():
+    # Filters for any chatroom with the current user
+    rooms = ChatRoom.query.filter(
+        (ChatRoom.chat1_id == current_user.id) |
+        (ChatRoom.chat2_id == current_user.id)
+    ).all()
+    results = []
+    # Loops through the filter, verfies which chatroom user the current user is then return the other_user based on that result
+    for room in rooms:
+        if room.chat1_id == current_user.id:
+            other_user = room.chat2_id
+        elif room.chat2_id == current_user.id:
+            other_user = room.chat1_id
+        
+        # Gets the other users information from the user table
+        user = Users.query.get(other_user)
+
+        # Returns each specific Chat room for the current user
+        results.append({
+            'chatroom_id': room.id,
+            'user_id': user.id,
+            'username': user.username
+        })
+    return jsonify(results),200
+
+@app.route('/api/message', methods=['POST'])
+def send_message():
+    # Retrieve data from json body
+    data = request.get_json()
+
+    # Creates a group chat data
+    message = Chat(
+        sender_id = current_user.id,
+        chatroom_id = data['chatroom_id'],
+        message = data['message']
+    )
+    # Adds the collected data back to the database
+    db.session.add(message)
+    db.session.commit()
+
+    return jsonify({'Message':'Successfully stored message in the database'})
+
+@app.route('/api/message/<int:chatroom_id>', methods=['GET'])
+def get_message(chatroom_id):
+    # Creates messages for a chatroom based url room selected and order each message accordingly 
+    messages = Chat.query.filter_by(
+        chatroom_id = chatroom_id
+    ).order_by(Chat.timestamp.asc()).all()
+
+    # Store both users of the chatroom and there messages in a list of results
+    result = [
+        {
+            "sender_id": m.sender_id,
+            "message": m.message,
+            "chatroom_id": m.chatroom_id
+        } for m in messages
+    ]
+    return jsonify(result)
 
 
 @app.route('/api/search', methods=['GET'])

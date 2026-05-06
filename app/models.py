@@ -92,6 +92,22 @@ class Favorite(db.Model):
     favorite_id = db.Column(db.Integer, primary_key=True)
 
 
+class ChatRoom(db.model):
+    __tablename__ = 'chatroom_profile'
+
+    id = db.Colun(db.Integer, primary_key=True)
+    chat1_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
+    chat2_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
+
+class Chat(db.model):
+    __tablename__ = 'chat_profile'
+
+    id = db.Colun(db.Integer, primary_key=True)
+    chatroom_id = db.Column(db.Integer, db.ForeignKey('chatroom_profile.id'))
+    sender_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
+    message = db.Column(db.Text)
+
+
 
 
     
