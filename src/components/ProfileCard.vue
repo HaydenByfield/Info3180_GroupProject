@@ -7,7 +7,10 @@ later for search results, favourites, or matched users.
 
 Parent components should pass in a profile object and listen for:
 interact (when the user clicks Like or Pass)
- avorite (when the user clicks Favorite)
+favorite (when the user clicks Favorite)
+message (when the user clicks Message)
+showActions can hide the Pass, Favorite, and Like buttons when the card is read-only.
+showMessageButton can show a Message button when the parent wants to start a chat.
 
   Version 1 (April 30, 2026)
 */
@@ -16,10 +19,18 @@ const props = defineProps({
   profile: {
     type: Object,
     required: true
+  },
+  showActions: {
+    type: Boolean,
+    default: true
+  },
+  showMessageButton: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(["interact", "favorite"]);
+const emit = defineEmits(["interact", "favorite", "message"]);
 
 // Fallback image used when the backend does not return a profile picture.
 const defaultProfileImage = "https://placehold.co/600x400?text=Profile";
@@ -65,7 +76,7 @@ function getDisplayName() {
 
       <!--Button clicks are emitted to the parent view. 
       for keeping the api out of reusable profilecard component -->
-      <div class="actions">
+      <div v-if="showActions" class="actions">
         <button type="button" class="pass-btn" @click="emit('interact', profile.id, 'pass')">
           Pass
         </button>
@@ -78,6 +89,15 @@ function getDisplayName() {
           Like
         </button>
       </div>
+
+      <button
+        v-if="showMessageButton"
+        type="button"
+        class="message-btn"
+        @click="emit('message', profile.id)"
+      >
+        Message
+      </button>
     </div>
   </article>
 </template>
@@ -187,6 +207,25 @@ function getDisplayName() {
 .like-btn {
   background: #e75480;
   color: white;
+}
+
+.message-btn {
+  width: 100%;
+  margin-top: 1.25rem;
+  border: none;
+  border-radius: 10px;
+  background: #e75480;
+  color: #fff;
+  font-weight: 700;
+  padding: 0.75rem 0.5rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.message-btn:hover {
+  background: #d94270;
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 /* Tablet layout keeps images slightly shorter for balanced cards. */

@@ -35,7 +35,26 @@ const router = createRouter({
       // Register View
   
       component: () => import('../views/RegisterView.vue')
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      
+      component: () => import('../views/DashboardView.vue')
+    },
+    {
+      path: '/messages',
+      name: 'messages',
+
+      component: () => import('../views/MessageView.vue')
+    },
+    {
+      path: '/matches',
+      name: 'matches',
+
+      component: () => import('../views/MatchesView.vue')
     }
+
   ]
 })
 

@@ -7,6 +7,14 @@ const loading = ref(false);
 const error = ref("");
 const toast = ref("");
 
+const currentUser = ref({
+  username: "Bob Builder",
+  age: 27,
+  location: "Kingston, Jamaica",
+  bio: "Software developer by day, photographer by night.",
+  imageUrl: "https://placehold.co/300x300?text=Bob"
+});
+
 // temporary data for testing, swap out once /matches is ready
 const mockData = [
   {
@@ -75,6 +83,22 @@ onMounted(loadProfiles);
 
 <template>
   <main class="dash">
+    <section class="profile-summary">
+      <img
+        class="profile-summary-img"
+        :src="currentUser.imageUrl"
+        :alt="`${currentUser.username}'s profile photo`"
+      >
+
+      <div class="profile-summary-content">
+        <h1>Welcome, {{ currentUser.username }}!</h1>
+        <p><strong>Age:</strong> {{ currentUser.age }}</p>
+        <p><strong>Location:</strong> {{ currentUser.location }}</p>
+        <p><strong>Bio:</strong> {{ currentUser.bio }}</p>
+        <button type="button" class="edit-profile-btn">Edit Profile</button>
+      </div>
+    </section>
+
     <section class="dash-header">
       <div>
         <h1>Discover Matches</h1>
@@ -83,7 +107,7 @@ onMounted(loadProfiles);
       <button type="button" class="refresh-btn" @click="loadProfiles">Refresh</button>
     </section>
 
-    <p v-if="toast" class="toast">{{ toast }}</p>
+    <p v-if="toast" class="toast show">{{ toast }}</p>
     <p v-if="error" class="err">{{ error }}</p>
 
     <section v-if="loading" class="status-box">
@@ -112,6 +136,59 @@ onMounted(loadProfiles);
   width: min(1100px, 92%);
   margin: 0 auto;
   padding: 2rem 0;
+}
+
+.profile-summary {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: stretch;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.profile-summary-img {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  object-fit: cover;
+}
+
+.profile-summary-content {
+  padding: 1.5rem;
+}
+
+.profile-summary-content h1 {
+  margin: 0 0 0.75rem;
+  color: #222;
+  font-size: 1.7rem;
+}
+
+.profile-summary-content p {
+  margin: 0.25rem 0;
+  color: #444;
+}
+
+.profile-summary-content strong {
+  color: #222;
+}
+
+.edit-profile-btn {
+  width: 100%;
+  margin-top: 0.8rem;
+  border: none;
+  border-radius: 10px;
+  background: #e75480;
+  color: #fff;
+  font-weight: 700;
+  padding: 0.75rem 1.1rem;
+  cursor: pointer;
+}
+
+.edit-profile-btn:hover {
+  background: #d94270;
 }
 
 .dash-header {
@@ -187,6 +264,16 @@ onMounted(loadProfiles);
 }
 
 @media (max-width: 640px) {
+  .profile-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-summary-img {
+    width: 100%;
+    height: 220px;
+    min-height: 0;
+  }
+
   .dash-header {
     flex-direction: column;
     align-items: flex-start;
