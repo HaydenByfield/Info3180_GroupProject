@@ -1,26 +1,3 @@
-<script setup>
-import { ref } from "vue";
-import { RouterLink } from "vue-router";
-
-const email = ref("");
-const password = ref("");
-const errorMessage = ref("");
-
-function handleLogin() {
-  errorMessage.value = "";
-
-  if (!email.value || !password.value) {
-    errorMessage.value = "Please enter both email and password.";
-    return;
-  }
-
-  console.log("Login submitted:", {
-    email: email.value,
-    password: password.value
-  });
-}
-</script>
-
 <template>
   <main class="auth-page">
     <form class="auth-card" @submit.prevent="handleLogin">
@@ -48,6 +25,32 @@ function handleLogin() {
     </form>
   </main>
 </template>
+
+
+<script setup>
+import { ref } from "vue";
+import { RouterLink } from "vue-router";
+
+const email = ref("");
+const password = ref("");
+const errorMessage = ref("");
+
+function handleLogin() {
+  errorMessage.value = "";
+
+  if (!email.value || !password.value) {
+    errorMessage.value = "Please enter both email and password.";
+    return;
+  }
+
+  console.log("Login submitted:", {
+    email: email.value,
+    password: password.value
+  });
+}  
+</script>
+ 
+
 
 <style scoped>
 .auth-page {
