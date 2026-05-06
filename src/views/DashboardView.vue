@@ -96,6 +96,7 @@ onMounted(loadProfiles);
         <p><strong>Location:</strong> {{ currentUser.location }}</p>
         <p><strong>Bio:</strong> {{ currentUser.bio }}</p>
         <button type="button" class="edit-profile-btn">Edit Profile</button>
+        <!--needs to link to edit profile component!-->
       </div>
     </section>
 

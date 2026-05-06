@@ -1,5 +1,8 @@
 <script setup>
 import { ref } from "vue";
+import { useRouter } from "vue-router"; //imporing router for after registration
+
+const router = useRouter();
 
 const name = ref("");
 const email = ref("");
@@ -25,6 +28,10 @@ function handleRegister() {
     email: email.value,
     password: password.value
   });
+
+  //after a successful registration i want to send the user to a profile setup
+  router.push("/profile/create");
+
 }
 </script>
 
