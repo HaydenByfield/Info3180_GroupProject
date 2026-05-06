@@ -95,8 +95,12 @@ onMounted(loadProfiles);
         <p><strong>Age:</strong> {{ currentUser.age }}</p>
         <p><strong>Location:</strong> {{ currentUser.location }}</p>
         <p><strong>Bio:</strong> {{ currentUser.bio }}</p>
-        <button type="button" class="edit-profile-btn">Edit Profile</button>
+
         <!--needs to link to edit profile component!-->
+        <RouterLink :to="{ name: 'edit-profile' }" class="edit-profile-btn">
+          Edit Profile
+        </RouterLink>
+        
       </div>
     </section>
 
@@ -120,7 +124,7 @@ onMounted(loadProfiles);
         v-for="p in cards"
         :key="p.id"
         :profile="p"
-        @interact="onSwipe"
+        @interact="onSwipe" 
         @favorite="onFavourite"
       />
     </section>

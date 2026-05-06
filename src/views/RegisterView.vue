@@ -40,6 +40,7 @@ function handleRegister() {
     <form class="auth-card" @submit.prevent="handleRegister">
       <h1>Create Account</h1>
       <p>Join DriftDater and start finding compatible matches.</p>
+      //Username, First Name and Last Name
 
       <div class="form-group">
         <label for="name">Full Name</label>

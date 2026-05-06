@@ -59,15 +59,14 @@ async function handleCreateProfile(profileData) {
 
     successMessage.value = "Profile created successfully.";
 
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 700);
-  } catch (error) {
-    console.error(error);
-    serverError.value = error.message || "Something went wrong. Please try again.";
-  } finally {
-    isSubmitting.value = false;
-  }
+    //after profile is created push the user to view the dashboard
+    router.push("/dashboard");
+    } catch (error) {
+        console.error(error);
+        serverError.value = "Something went wrong. Please try again.";
+    } finally {
+  isSubmitting.value = false;
+}
 }
 </script>
 

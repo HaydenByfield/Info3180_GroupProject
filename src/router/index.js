@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import CreateProfileView from "../views/CreateProfileView.vue";
+import EditProfileView from "../views/EditProfileView.vue";
 
 
 const router = createRouter({
@@ -59,6 +60,11 @@ const router = createRouter({
       path: "/profile/create",
       name: "create-profile",
       component: CreateProfileView
+    },
+    {
+      path: "/profile/edit",
+      name: "edit-profile",
+      component: EditProfileView
     }
 
   ]

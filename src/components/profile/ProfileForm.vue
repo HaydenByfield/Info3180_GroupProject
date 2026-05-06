@@ -59,7 +59,7 @@ const form = reactive({
 
 const errors = ref({});
 
-// if initialProfile is passed in (edit mode), fill the form with the existing data
+// if initialProfile is passed in edit mode, fill the form with the existing data
 watch(
   () => props.initialProfile,
   (profile) => {
