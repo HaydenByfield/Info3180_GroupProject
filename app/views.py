@@ -5,6 +5,7 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 import os
+import json
 from app import app, db, login_manager, csrf
 from flask import render_template, request, jsonify, send_file
 from flask_login import current_user, login_required, login_user, logout_user
@@ -91,27 +92,31 @@ def registration():#registration function
     else:
         return jsonify({'success': False, 'message': 'User already exists'})
 
-@app.route('/api/profile', methods=['POST'])
+@app.route('/api/profile', methods=['POST','GET'])
 def createProfile():#registration function
     #form = RegistrationForm
 
     #if form.validate_on_submit()
 
     #return redirect(url_for('index'))
-    data = request.get_json() #get the data from the json
-    if not data:
-        return jsonify({"success": False, "message": "No JSON received"}), 400
+    print("CONTENT TYPE:", request.content_type)
+    print("FILES:", request.files)
+    print("VALUES:", request.values)
+    name = request.form.get('name')
+    age = request.form.get('age')
+    location = request.form.get('location')
+    relationship = request.form.get('relationshipGoal')
+    bio = request.form.get('bio')
+    occupation = request.form.get('occupation')
+    interests = request.form.get('interests')
+    radius = request.form.get('radius')
+    photo = request.files.get('profilePhoto')
+    if photo:
+        filename = secure_filename(photo.filename)
+        photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-    name = data.get('name')
-    age = data.get('age')
-    location = data.get('location')
-    relationship = data.get('relationship')
-    bio = data.get('bio')
-    occupation = data.get('occupation')
-    photo = data.get('location')
-    filename = secure_filename(photo.filename)
-    photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
+    interests_list = json.loads(interests)
+    
     
     user_profile = Profile(#creates a user for this user
         user_id = current_user.id,
@@ -123,12 +128,33 @@ def createProfile():#registration function
         occupation = occupation,
         photo = filename
     )
+    db.session.add(user_profile)
 
-        
-    db.session.add(user_profile) #adds user to database
+    user_preferences = Preferences(
+
+        user_id=current_user.id,
+
+        radius=radius
+    )
+
+    db.session.add(user_preferences)
+
+    for interest_name in interests_list:
+        existing_interest = Interest.query.filter_by(name=interest_name).first()
+        if not existing_interest:
+            existing_interest = Interest(
+                name = interest_name
+            )
+            db.session.add(existing_interest)
+            db.session.flush()
+
+        user_interest = UserInterests(
+            user_id = current_user.id,
+            interest_id = existing_interest.id
+        )
+        db.session.add(user_interest) #adds user to database
     db.session.commit() #saves user
 
-    #logs user in right after
     return jsonify({'success': True, 'message': 'Profile Updated'})
         
 

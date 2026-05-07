@@ -5,6 +5,8 @@ import InterestSelector from "./InterestsSelector.vue";
 import ProfilePhotoUpload from "./ProfilePhotoUpload.vue";
 import VisibilitySelector from "./VisibilitySelector.vue";
 
+
+
 // this form is used for both creating and editing a profile
 // the parent view will send the method to POST or PATCH depending on the creating or editing 
 const props = defineProps({

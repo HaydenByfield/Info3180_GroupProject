@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import ProfileForm from "@/components/profile/ProfileForm.vue";
 
@@ -18,6 +18,23 @@ const router = useRouter();
 const isSubmitting = ref(false);
 const serverError = ref("");
 const successMessage = ref("");
+const csrf_token = ref("")
+
+
+const getCsrfToken = async () => {
+    try{
+        let response = await fetch('/api/csrf-token')
+        let data = await response.json();
+        csrf_token.value = data.csrf_token
+        console.log(data)
+
+    } catch(error){
+        console.log(error)
+    }
+}
+onMounted(() => {
+    getCsrfToken();
+})
 
 async function handleCreateProfile(profileData) {
   isSubmitting.value = true;
@@ -44,13 +61,15 @@ async function handleCreateProfile(profileData) {
     if (profileData.profilePhoto) {
       formData.append("profilePhoto", profileData.profilePhoto);
     }
-
+    console.log("INTERESTS SENT:", profileData.interests);
+    console.log("FORMDATA INTERESTS:", JSON.stringify(profileData.interests));
     const response = await fetch("/api/profile", {
       method: "POST",
       credentials: "include",
+      headers: {'X-CSRFToken': csrf_token.value},
       body: formData
     });
-
+    
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
