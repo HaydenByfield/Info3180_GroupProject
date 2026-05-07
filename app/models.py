@@ -14,15 +14,13 @@ class Users(db.Model):
     interest = db.relationship('Interest', secondary='user_interests_profile', backref='users')
     profile = db.relationship('Profile', backref='users')
 
-    def __init__(self, username, first_name, last_name, age, password):
+    def __init__(self, username, email, password):
         self.username = username
-        self.first_name = first_name
-        self.last_name = last_name
-        self.age = age
+        self.email = email
         self.password = generate_password_hash(password)
 
     def check_password(self,password):
-        return check_password_hash(password, self.password)
+        return check_password_hash(self.password, password)
     
     def is_authenticated():
         return True

@@ -28,7 +28,7 @@
 
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 
 
@@ -37,6 +37,22 @@ const email = ref("");
 const password = ref("");
 const errorMessage = ref("");
 const message = ref("");
+const csrf_token =ref("")
+
+const getCsrfToken = async () => {
+    try{
+        let response = await fetch('/api/csrf-token')
+        let data = await response.json();
+        csrf_token.value = data.csrf_token
+        console.log(data)
+
+    } catch(error){
+        console.log(error)
+    }
+}
+onMounted(() => {
+    getCsrfToken();
+})
 
 async function handleLogin() {
   errorMessage.value = "";
@@ -49,21 +65,21 @@ async function handleLogin() {
   try{
     let response = await fetch('/api/login', {
       method: 'POST',
-      header: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf_token.value},
       body: JSON.stringify({
         email: email.value,
         password: password.value
       })
     })
     let data = await response.json()
-    if(response.ok){
+    if(response.ok && data.success){
       message.value = data.message
       console.log(message)
       router.push("/dashboard");
+    } else {
+      errorMessage.value = data.message
     }
-    if(!response.ok){
-      errorMessage.value = "Response Error"
-    }
+
   } catch(error){
     console.error
   }

@@ -5,11 +5,12 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 import os
-from app import app, db, login_manager
+from app import app, db, login_manager, csrf
 from flask import render_template, request, jsonify, send_file
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import text, func
 from app.models import Interactions, Users, Preferences, UserInterests, Interest, Favorite, Chat, ChatRoom
+from flask_wtf.csrf import generate_csrf
 
 
 ###
@@ -19,25 +20,29 @@ from app.models import Interactions, Users, Preferences, UserInterests, Interest
 @app.route('/')
 def index():
     return jsonify(message="This is the beginning of our API")
+@app.route('/api/csrf-token', methods=['GET'])
+def get_crsf():
+    return jsonify({'csrf_token': generate_csrf()})
+
 @app.route('/api/login', methods = ['POST'])#login function
 def login():
     #form = LoginForm()
     #if form.validate_on_submit():
     #gets the data from the json
     data = request.get_json()
-    username = data.get('username')
+    email = data.get('email')
     password = data.get('password')
 
-    user = Users.query.filter_by(username=username).first() #search for user in the database
+    user = Users.query.filter_by(email=email).first() #search for user in the database
     if user is None: #checks if there's such a username
         #flash('Account does not exist, enter the correct username or <a href="/registration">create an account</a>.', 'warning')
-        return jsonify({'success': False, 'message': 'Account does not exist'})
+        return jsonify({'success': False, 'message': 'Account does not exist'}), 404
 
-    if Users.check_password(user.password, password): #checks that the password is the one associated with that username
+    if user and user.check_password(password): #checks that the password is the one associated with that username
         login_user(user)
-        return jsonify({'success': True})
+        return jsonify({'success': True}), 200
 
-    return jsonify({'success': False, 'message': 'Incorrect password'}) #for all times where password is incorrect but there is a user
+    return jsonify({'success': False, 'message': 'Incorrect password'}), 401 #for all times where password is incorrect but there is a user
     
         
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted} from "vue";
 import { useRouter } from "vue-router"; //imporing router for after registration
 
 const router = useRouter();
@@ -10,7 +10,22 @@ const password = ref("");
 const confirmPassword = ref("");
 const errorMessage = ref("");
 const message = ref("")
+const csrf_token =ref("")
 
+const getCsrfToken = async () => {
+    try{
+        let response = await fetch('/api/csrf-token')
+        let data = await response.json();
+        csrf_token.value = data.csrf_token
+        console.log(data)
+
+    } catch(error){
+        console.log(error)
+    }
+}
+onMounted(() => {
+    getCsrfToken();
+})
 function handleRegister() {
   errorMessage.value = "";
 
@@ -28,7 +43,7 @@ function handleRegister() {
     try{
       let response = await fetch('/api/registration',{
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json','X-CSRFToken': csrf_token.value},
         body: JSON.stringify({
           username: username.value,
           password:password.value,
