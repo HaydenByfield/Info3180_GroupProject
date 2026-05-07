@@ -24,7 +24,7 @@ async function handleCreateProfile(profileData) {
   serverError.value = "";
   successMessage.value = "";
 
-  try {
+  try { 
     const formData = new FormData();
 
     ///Need to find a way to save the name from register view so that user does not have to reenter name

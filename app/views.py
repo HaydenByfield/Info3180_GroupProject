@@ -9,9 +9,11 @@ from app import app, db, login_manager, csrf
 from flask import render_template, request, jsonify, send_file
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import text, func
-from app.models import Interactions, Users, Preferences, UserInterests, Interest, Favorite, Chat, ChatRoom
+from werkzeug.utils import secure_filename
+from app.models import Interactions, Users, Preferences, UserInterests, Interest, Favorite, Chat, ChatRoom, Profile
 from flask_wtf.csrf import generate_csrf
 
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 
 ###
 # Routing for your application.
@@ -46,7 +48,7 @@ def login():
     
         
 
-@app.route('/api/registration', methods=['POST','GET'])
+@app.route('/api/registration', methods=['POST'])
 def registration():#registration function
     #form = RegistrationForm
 
@@ -89,6 +91,46 @@ def registration():#registration function
     else:
         return jsonify({'success': False, 'message': 'User already exists'})
 
+@app.route('/api/profile', methods=['POST'])
+def createProfile():#registration function
+    #form = RegistrationForm
+
+    #if form.validate_on_submit()
+
+    #return redirect(url_for('index'))
+    data = request.get_json() #get the data from the json
+    if not data:
+        return jsonify({"success": False, "message": "No JSON received"}), 400
+
+    name = data.get('name')
+    age = data.get('age')
+    location = data.get('location')
+    relationship = data.get('relationship')
+    bio = data.get('bio')
+    occupation = data.get('occupation')
+    photo = data.get('location')
+    filename = secure_filename(photo.filename)
+    photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+    
+    user_profile = Profile(#creates a user for this user
+        user_id = current_user.id,
+        name = name,
+        age = age,
+        location = location,
+        relationship = relationship,
+        bio = bio,
+        occupation = occupation,
+        photo = filename
+    )
+
+        
+    db.session.add(user_profile) #adds user to database
+    db.session.commit() #saves user
+
+    #logs user in right after
+    return jsonify({'success': True, 'message': 'Profile Updated'})
+        
 
 
 @app.route('/api/logout')

@@ -55,15 +55,14 @@ function handleRegister() {
       })
       
       let data = await response.json()
-      if(response.ok){
+      if(response.ok && data.success){
         message.value = data.message
         console.log(message)
         router.push("/profile/create");
+      } else {
+        errorMessage.value = message.data
       }
-      if(!response.ok){
-        errorMessage.value = "Response Error"
-        message.value = data.message
-      }
+        
     } catch(error){
       console.error;
     }
