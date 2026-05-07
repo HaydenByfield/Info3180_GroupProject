@@ -5,9 +5,9 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 import os
-from app import app, db
+from app import app, db, login_manager
 from flask import render_template, request, jsonify, send_file
-from flask_login import current_user
+from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import text, func
 from app.models import Interactions, Users, Preferences, UserInterests, Interest, Favorite, Chat, ChatRoom
 
@@ -19,6 +19,82 @@ from app.models import Interactions, Users, Preferences, UserInterests, Interest
 @app.route('/')
 def index():
     return jsonify(message="This is the beginning of our API")
+@app.route('/api/login', methods = ['POST'])#login function
+def login():
+    #form = LoginForm()
+    #if form.validate_on_submit():
+    #gets the data from the json
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    user = Users.query.filter_by(username=username).first() #search for user in the database
+    if user is None: #checks if there's such a username
+        #flash('Account does not exist, enter the correct username or <a href="/registration">create an account</a>.', 'warning')
+        return jsonify({'success': False, 'message': 'Account does not exist'})
+
+    if Users.check_password(user.password, password): #checks that the password is the one associated with that username
+        login_user(user)
+        return jsonify({'success': True})
+
+    return jsonify({'success': False, 'message': 'Incorrect password'}) #for all times where password is incorrect but there is a user
+    
+        
+
+@app.route('/api/registration', methods=['POST','GET'])
+def registration():#registration function
+    #form = RegistrationForm
+
+    #if form.validate_on_submit()
+
+    #return redirect(url_for('index'))
+    data = request.get_json() #get the data from the json
+    if not data:
+        return jsonify({"success": False, "message": "No JSON received"}), 400
+
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    confirmpassword = data.get('confirmpassword')
+
+    user = Users.query.filter_by(username=username).first()
+    emailcheck = Users.query.filter_by(email=email).first()
+    if user is None: #making sure that there is no other user with the same name
+        #create a user
+        if password != confirmpassword:#makes sure the password confirmations match
+            return jsonify({'success': False, 'message': 'Passwords must match'})
+        if emailcheck: #check if there's an existing account with this email
+            return jsonify({'success': False, 'message': 'Email already in use'})
+        
+        newuser = Users(#creates a user for this user
+            username = username,
+            email = email,
+            password = password,
+        )
+
+        current_user.latitude = data['latitude']
+        current_user.longitude = data['longitude']
+        
+        db.session.add(newuser) #adds user to database
+        db.session.commit() #saves user
+
+        login_user(newuser) #logs user in right after
+        return jsonify({'success': True, 'message': 'User created'})
+        
+    else:
+        return jsonify({'success': False, 'message': 'User already exists'})
+
+
+
+@app.route('/api/logout')
+@login_required
+def logout(): #logout function
+    logout_user(current_user)#logs out the user
+    return jsonify({'success': True, 'message': 'User Logged Out'})
+
+@login_manager.user_loader
+def load_user(id):
+    return db.session.execute(db.select(Users).filter_by(id=id)).scalar()
 
 @app.route('/api/updatelocation', methods=['POST'])
 def updateLocation():

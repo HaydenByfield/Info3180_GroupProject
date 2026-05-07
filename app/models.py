@@ -6,15 +6,13 @@ class Users(db.Model):
 
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(80), nullable = False)
-    first_name = db.Column(db.String(80), nullable = False)
-    last_name = db.Column(db.String(80), nullable = False)
-    age = db.Column(db.Integer, nullable = False)
-    gender = db.Column(db.String(80), nullable = False)
+    email = db.Column(db.String(80), unique=True)
     password = db.Column(db.String(256), nullable = False)
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
     preference = db.relationship('Preferences', backref='users', uselist=False)
     interest = db.relationship('Interest', secondary='user_interests_profile', backref='users')
+    profile = db.relationship('Profile', backref='users')
 
     def __init__(self, username, first_name, last_name, age, password):
         self.username = username
@@ -44,6 +42,21 @@ class Users(db.Model):
     def __repr__(self):
         return '<user %r>' % (self.username)
     
+class Profile(db.Model):
+    __tablename__ = 'p_profile'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
+    name = db.Column(db.String(80), nullable = False)
+    location = db.Column(db.String(80), nullable = False)
+    age = db.Column(db.Integer, nullable = False)
+    Bio = db.Column(db.Text)
+    relationship = db.Column(db.String(80), nullable = False)
+    occupation = db.Column(db.String(80), nullable = False)
+    photo = db.Column(db.String(80), nullable = False)
+
+
+
 # Store User Preferences
 class Preferences(db.Model):
     __tablename__ = 'preferences_profile'
@@ -92,17 +105,17 @@ class Favorite(db.Model):
     favorite_id = db.Column(db.Integer, primary_key=True)
 
 
-class ChatRoom(db.model):
+class ChatRoom(db.Model):
     __tablename__ = 'chatroom_profile'
 
-    id = db.Colun(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     chat1_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
     chat2_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
 
-class Chat(db.model):
+class Chat(db.Model):
     __tablename__ = 'chat_profile'
 
-    id = db.Colun(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     chatroom_id = db.Column(db.Integer, db.ForeignKey('chatroom_profile.id'))
     sender_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
     message = db.Column(db.Text)

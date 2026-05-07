@@ -4,16 +4,17 @@ import { useRouter } from "vue-router"; //imporing router for after registration
 
 const router = useRouter();
 
-const name = ref("");
+const username = ref("");
 const email = ref("");
 const password = ref("");
 const confirmPassword = ref("");
 const errorMessage = ref("");
+const message = ref("")
 
 function handleRegister() {
   errorMessage.value = "";
 
-  if (!name.value || !email.value || !password.value || !confirmPassword.value) {
+  if (!username.value || !email.value || !password.value || !confirmPassword.value) {
     errorMessage.value = "Please fill out all fields.";
     return;
   }
@@ -23,14 +24,45 @@ function handleRegister() {
     return;
   }
 
+  navigator.geolocation.getCurrentPosition(async(position) =>{
+    try{
+      let response = await fetch('/api/registration',{
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          username: username.value,
+          password:password.value,
+          email: email.value,
+          confirmpassword: confirmPassword.value,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        })
+      })
+      
+      let data = await response.json()
+      if(response.ok){
+        message.value = data.message
+        console.log(message)
+        router.push("/profile/create");
+      }
+      if(!response.ok){
+        errorMessage.value = "Response Error"
+        message.value = data.message
+      }
+    } catch(error){
+      console.error;
+    }
+    
+  })
+
   console.log("Registration submitted:", {
-    name: name.value,
+    username: username.value,
     email: email.value,
     password: password.value
   });
 
   //after a successful registration i want to send the user to a profile setup
-  router.push("/profile/create");
+  
 
 }
 </script>
@@ -40,11 +72,10 @@ function handleRegister() {
     <form class="auth-card" @submit.prevent="handleRegister">
       <h1>Create Account</h1>
       <p>Join DriftDater and start finding compatible matches.</p>
-      //Username, First Name and Last Name
 
       <div class="form-group">
         <label for="name">Full Name</label>
-        <input id="name" v-model="name" type="text" placeholder="Enter your full name" />
+        <input id="name" v-model="username" type="text" placeholder="Enter your full name" />
       </div>
 
       <div class="form-group">

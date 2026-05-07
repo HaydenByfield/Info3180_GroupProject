@@ -29,18 +29,43 @@
 
 <script setup>
 import { ref } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 
+
+const router = useRouter();
 const email = ref("");
 const password = ref("");
 const errorMessage = ref("");
+const message = ref("");
 
-function handleLogin() {
+async function handleLogin() {
   errorMessage.value = "";
 
   if (!email.value || !password.value) {
     errorMessage.value = "Please enter both email and password.";
     return;
+  }
+
+  try{
+    let response = await fetch('/api/login', {
+      method: 'POST',
+      header: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        email: email.value,
+        password: password.value
+      })
+    })
+    let data = await response.json()
+    if(response.ok){
+      message.value = data.message
+      console.log(message)
+      router.push("/dashboard");
+    }
+    if(!response.ok){
+      errorMessage.value = "Response Error"
+    }
+  } catch(error){
+    console.error
   }
 
   console.log("Login submitted:", {
