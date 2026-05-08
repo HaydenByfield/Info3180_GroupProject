@@ -158,7 +158,70 @@ def createProfile():#registration function
 
     return jsonify({'success': True, 'message': 'Profile Updated'})
         
+@app.route('/api/editprofile', methods = ['POST'])
+@login_required
+def editprofile():
+    #data = request.get_json()
+    user = Users.query.get(current_user.id)#gets user
 
+
+    #collecting the information from the vue
+    profile = user.profile
+    name = request.form.get('name')
+    age = request.form.get('age')
+    location = request.form.get('location')
+    relationship = request.form.get('relationshipGoal')
+    bio = request.form.get('bio')
+    occupation = request.form.get('occupation')
+    interests = request.form.get('interests')
+    radius = request.form.get('radius')
+
+    interests_list = json.loads(interests) if interests else [] #only updating if there's a change to interests
+
+    filename = None #initializing as None just in case no picture change
+    photo = request.files.get('profilePhoto')
+    if photo: #checking existence of photo to prevent any errors
+        filename = secure_filename(photo.filename) #update filename to the photo
+        photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename)) #adding to uploads folder
+
+    #updating the profile information
+    profile.name = name
+    profile.age = age
+    profile.location = location
+    profile.relationship = relationship
+    profile.bio = bio
+    profile.occupation = occupation
+    #profile.interests = interests
+    profile.radius = radius
+    profile.photo = filename
+
+    if interests: #if interests were changed, updating everything with interests
+        UserInterests.query.filter_by(user_id=current_user.id).delete()  #clearing old
+        for interest_name in interests_list:
+            existing_interest = Interest.query.filter_by(name=interest_name).first()
+            if not existing_interest:
+                existing_interest = Interest(name=interest_name)
+                db.session.add(existing_interest)
+                db.session.flush()
+
+            user_interest = UserInterests(
+                user_id=current_user.id,
+                interest_id=existing_interest.id
+            )
+            db.session.add(user_interest)
+
+
+    #updating user information where applicable
+    if name and age:
+        tempname = name.split() #splits first and last name from name field
+        user.first_name = tempname[0]
+        user.last_name = tempname[1] if len(tempname) > 1 else ''
+        user.age = age
+    
+
+    db.session.commit()#save to db
+
+    return jsonify({'success': True, 'message': 'Profile Edited'})
 
 @app.route('/api/logout')
 @login_required
