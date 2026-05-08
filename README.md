@@ -305,6 +305,12 @@ $ response:
 $ Description: 
 $ Searches for users using filters such as age range, interests, distance, and matches. ordered by timestamp.
 ```
+
+## Known Issues and Limitations
+```sh
+Difficulties in regards to integration may lead to failure of frontend data reaching backend. Independently, these are functional methods but currently unable to locate source of failure 
+```
+
 # INFO3180 VueJS and Flask Starter
 
 This template should help get you started developing with Vue 3 on the frontend and Flask as an API on the backend.
