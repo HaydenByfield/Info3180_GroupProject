@@ -27,22 +27,23 @@ async function handleCreateProfile(profileData) {
   try {
     const formData = new FormData();
 
-    ///Need to find a way to save the name from register view so that user does not have to reenter name
-    //should invoke history state
-    formData.append("name", profileData.name);
-    formData.append("age", profileData.age);
-    formData.append("bio", profileData.bio);
-    formData.append("location", profileData.location);
-    formData.append("radius", profileData.radius);
-    formData.append("relationshipGoal", profileData.relationshipGoal);
-    formData.append("occupation", profileData.occupation);
-    formData.append("isPublic", profileData.isPublic);
-
-    //the user interests are sent as a JSON string because value is array
-    formData.append("interests", JSON.stringify(profileData.interests));
+    formData.append("name", profileData.name || "");
+    formData.append("age", profileData.age || "");
+    formData.append("bio", profileData.bio || "");
+    formData.append("location", profileData.location || "");
+    formData.append("radius", profileData.radius || "");
+    formData.append("relationshipGoal", profileData.relationshipGoal || "");
+    formData.append("occupation", profileData.occupation || "");
+    formData.append("isPublic", profileData.isPublic ? "true" : "false");
+    formData.append("interests", JSON.stringify(profileData.interests || []));
 
     if (profileData.profilePhoto) {
       formData.append("profilePhoto", profileData.profilePhoto);
+    }
+
+    //DUMP to check exactly what is being sent to Flask
+    for (const [key, value] of formData.entries()) {
+      console.log(key, value);
     }
 
     const response = await fetch("/api/profile", {
