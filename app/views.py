@@ -94,15 +94,7 @@ def registration():#registration function
 
 @app.route('/api/profile', methods=['POST','GET'])
 def createProfile():#registration function
-    #form = RegistrationForm
-
-    #if form.validate_on_submit()
-
-    #return redirect(url_for('index'))
-    print("CONTENT TYPE:", request.content_type)
-    print("FORM:", request.form.to_dict())
-    print("FILES:", request.files)
-    print("VALUES:", request.values)
+    # Retreieves form data from frontend body formData
     name = request.form.get('name')
     age = request.form.get('age')
     location = request.form.get('location')
@@ -112,15 +104,17 @@ def createProfile():#registration function
     interests = request.form.get('interests')
     radius = request.form.get('radius')
     photo = request.files.get('profilePhoto')
-    
-    filename = secure_filename(photo.filename)
-    photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    # Verifies if a Photo exist before secureing the file
+    if photo:
+        filename = secure_filename(photo.filename)
+        photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-    # interests_list = json.loads(interests)
+    # Converts the JSON string into code usuable in flask
+    interests_list = json.loads(interests)
     
-    
+    # Adds data to the Profile database
     user_profile = Profile(#creates a user for this user
-        #user_id = current_user.id,
+        user_id = current_user.id,
         name = name,
         age = age,
         location = location,
@@ -130,7 +124,7 @@ def createProfile():#registration function
         photo = filename
     )
     db.session.add(user_profile)
-
+    # Adds data to the preference database
     user_preferences = Preferences(
 
         user_id=current_user.id,
@@ -139,16 +133,18 @@ def createProfile():#registration function
     )
 
     db.session.add(user_preferences)
-
+    # loops through the list of interest
     for interest_name in interests:
+        # Checks if the interest already in the database
         existing_interest = Interest.query.filter_by(name=interest_name).first()
         if not existing_interest:
+            # Adds interest data to the database
             existing_interest = Interest(
                 name = interest_name
             )
             db.session.add(existing_interest)
             db.session.flush()
-
+        # Adds the User and its assinged interests
         user_interest = UserInterests(
             user_id = current_user.id,
             interest_id = existing_interest.id
