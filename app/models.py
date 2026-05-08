@@ -8,11 +8,11 @@ class Users(db.Model):
     username = db.Column(db.String(80), nullable = False)
     email = db.Column(db.String(80), unique=True)
     password = db.Column(db.String(256), nullable = False)
-    latitude = db.Column(db.Float)
-    longitude = db.Column(db.Float)
+    latitude = db.Column(db.Float, index=True)
+    longitude = db.Column(db.Float, index=True)
     preference = db.relationship('Preferences', backref='users', uselist=False)
     interest = db.relationship('Interest', secondary='user_interests_profile', backref='users')
-    profile = db.relationship('Profile', backref='users')
+    profile = db.relationship('Profile', backref='users', uselist=False)
 
     def __init__(self, username, email, password):
         self.username = username
@@ -22,13 +22,13 @@ class Users(db.Model):
     def check_password(self,password):
         return check_password_hash(self.password, password)
     
-    def is_authenticated():
+    def is_authenticated(self):
         return True
     
-    def is_active():
+    def is_active(self):
         return True
     
-    def is_anonymus():
+    def is_anonymous(self):
         return False
     
     def get_id(self):
@@ -52,6 +52,7 @@ class Profile(db.Model):
     relationship = db.Column(db.String(80), nullable = False)
     occupation = db.Column(db.String(80), nullable = False)
     photo = db.Column(db.String(80), nullable = False)
+    isPublic = db.Column(db.Boolean, nullable = False)
 
 
 
@@ -65,12 +66,11 @@ class Preferences(db.Model):
     min_age = db.Column(db.Integer)
     max_age = db.Column(db.Integer)
 
-    def __self__(self, radius, min_age, max_age, interest, gender):
+    def __self__(self, radius, min_age, max_age):
         self.radius = radius
         self.min_age = min_age
         self.max_age = max_age
-        self.interest = interest
-        self. gender = gender
+        
 
     def __repr__(self):
         return '<Preferences %r>' % (self.range)
@@ -79,7 +79,7 @@ class Interest(db.Model):
     __tablename__ = 'interest_profile'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80))
+    name = db.Column(db.String(80), index=True)
 
 class UserInterests(db.Model):
     __tablename__ = 'user_interests_profile'
@@ -97,7 +97,7 @@ class Interactions(db.Model):
     action = db.Column(db.String(80))
     
 class Favorite(db.Model):
-    __tablename__ = 'favourtie_profile'
+    __tablename__ = 'favortie_profile'
 
     user_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
     favorite_id = db.Column(db.Integer, primary_key=True)

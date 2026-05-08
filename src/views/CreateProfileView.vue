@@ -71,7 +71,7 @@ async function handleCreateProfile(profileData) {
     });
     
     const data = await response.json().catch(() => ({}));
-
+    console.log(data)
     if (!response.ok) {
       throw new Error(data.message || "Unable to create profile.");
     }

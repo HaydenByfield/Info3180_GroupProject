@@ -100,6 +100,7 @@ def createProfile():#registration function
 
     #return redirect(url_for('index'))
     print("CONTENT TYPE:", request.content_type)
+    print("FORM:", request.form.to_dict())
     print("FILES:", request.files)
     print("VALUES:", request.values)
     name = request.form.get('name')
@@ -111,15 +112,15 @@ def createProfile():#registration function
     interests = request.form.get('interests')
     radius = request.form.get('radius')
     photo = request.files.get('profilePhoto')
-    if photo:
-        filename = secure_filename(photo.filename)
-        photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    
+    filename = secure_filename(photo.filename)
+    photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-    interests_list = json.loads(interests)
+    # interests_list = json.loads(interests)
     
     
     user_profile = Profile(#creates a user for this user
-        user_id = current_user.id,
+        #user_id = current_user.id,
         name = name,
         age = age,
         location = location,
@@ -139,7 +140,7 @@ def createProfile():#registration function
 
     db.session.add(user_preferences)
 
-    for interest_name in interests_list:
+    for interest_name in interests:
         existing_interest = Interest.query.filter_by(name=interest_name).first()
         if not existing_interest:
             existing_interest = Interest(
