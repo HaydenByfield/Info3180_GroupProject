@@ -23,40 +23,16 @@ app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 @app.route('/')
 def index():
     return jsonify(message="This is the beginning of our API")
+
+#works
 @app.route('/api/csrf-token', methods=['GET'])
-def get_crsf():
+def get_csrf():
     return jsonify({'csrf_token': generate_csrf()})
 
-@app.route('/api/login', methods = ['POST'])#login function
-def login():
-    #form = LoginForm()
-    #if form.validate_on_submit():
-    #gets the data from the json
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-
-    user = Users.query.filter_by(email=email).first() #search for user in the database
-    if user is None: #checks if there's such a username
-        #flash('Account does not exist, enter the correct username or <a href="/registration">create an account</a>.', 'warning')
-        return jsonify({'success': False, 'message': 'Account does not exist'}), 404
-
-    if user and user.check_password(password): #checks that the password is the one associated with that username
-        login_user(user)
-        return jsonify({'success': True}), 200
-
-    return jsonify({'success': False, 'message': 'Incorrect password'}), 401 #for all times where password is incorrect but there is a user
-    
-        
-
-@app.route('/api/registration', methods=['POST'])
-def registration():#registration function
-    #form = RegistrationForm
-
-    #if form.validate_on_submit()
-
-    #return redirect(url_for('index'))
-    data = request.get_json() #get the data from the json
+#works
+@app.route('/api/users', methods=['POST'])
+def register_user():
+    data = request.get_json() 
     if not data:
         return jsonify({"success": False, "message": "No JSON received"}), 400
 
@@ -67,41 +43,58 @@ def registration():#registration function
 
     user = Users.query.filter_by(username=username).first()
     emailcheck = Users.query.filter_by(email=email).first()
-    if user is None: #making sure that there is no other user with the same name
-        #create a user
-        if password != confirmpassword:#makes sure the password confirmations match
+
+    if user is None:
+        if password != confirmpassword:
             return jsonify({'success': False, 'message': 'Passwords must match'})
-        if emailcheck: #check if there's an existing account with this email
+        if emailcheck:
             return jsonify({'success': False, 'message': 'Email already in use'})
         
-        newuser = Users(#creates a user for this user
+        newuser = Users(
             username = username,
             email = email,
             password = password,
         )
 
-        current_user.latitude = data['latitude']
-        current_user.longitude = data['longitude']
-        
-        db.session.add(newuser) #adds user to database
-        db.session.commit() #saves user
+        newuser.latitude = data.get('latitude')
+        newuser.longitude = data.get('longitude')
 
-        login_user(newuser) #logs user in right after
+        db.session.add(newuser)
+        db.session.commit()
+
+        login_user(newuser)
         return jsonify({'success': True, 'message': 'User created'})
         
     else:
         return jsonify({'success': False, 'message': 'User already exists'})
 
-@app.route('/api/profile', methods=['POST','GET'])
-def createProfile():#registration function
-    #form = RegistrationForm
+#works
+@app.route('/api/login', methods = ['POST'])
+def login():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
 
-    #if form.validate_on_submit()
+    user = Users.query.filter_by(email=email).first()
 
-    #return redirect(url_for('index'))
-    print("CONTENT TYPE:", request.content_type)
-    print("FILES:", request.files)
-    print("VALUES:", request.values)
+    if user is None:
+        return jsonify({'success': False, 'message': 'Account does not exist'}), 404
+
+    if user and user.check_password(password):
+        login_user(user)
+        return jsonify({'success': True}), 200
+
+    return jsonify({'success': False, 'message': 'Incorrect password'}), 401
+
+@app.route('/api/logout', methods=['POST'])
+@login_required
+def logout(): #logout function
+    logout_user(current_user)
+    return jsonify({'success': True, 'message': 'User Logged Out'})
+
+
+@app.route('/api/profile', methods=['POST'])
+def create_profile():
     name = request.form.get('name')
     age = request.form.get('age')
     location = request.form.get('location')
@@ -111,29 +104,27 @@ def createProfile():#registration function
     interests = request.form.get('interests')
     radius = request.form.get('radius')
     photo = request.files.get('profilePhoto')
+
     if photo:
         filename = secure_filename(photo.filename)
         photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
     interests_list = json.loads(interests)
     
-    
-    user_profile = Profile(#creates a user for this user
+    user_profile = Profile(
         user_id = current_user.id,
         name = name,
         age = age,
         location = location,
         relationship = relationship,
-        bio = bio,
+        Bio = bio,
         occupation = occupation,
         photo = filename
     )
     db.session.add(user_profile)
 
     user_preferences = Preferences(
-
         user_id=current_user.id,
-
         radius=radius
     )
 
@@ -156,48 +147,39 @@ def createProfile():#registration function
     db.session.commit() #saves user
 
     return jsonify({'success': True, 'message': 'Profile Updated'})
-        
 
 
-@app.route('/api/logout')
+@app.route('/api/location', methods=['PATCH'])
 @login_required
-def logout(): #logout function
-    logout_user(current_user)#logs out the user
-    return jsonify({'success': True, 'message': 'User Logged Out'})
-
-@login_manager.user_loader
-def load_user(id):
-    return db.session.execute(db.select(Users).filter_by(id=id)).scalar()
-
-@app.route('/api/updatelocation', methods=['POST'])
 def updateLocation():
-    # Extracts JSON data from Request Body
     data = request.get_json()
 
-    # Assigns coordinate values from the Request data
     current_user.latitude = data['latitude']
     current_user.longitude = data['longitude']
-
-    # Enters value into the Database
     db.session.commit()
 
     return jsonify({'message' : "Location Updated"})
 
+
 @app.route('/api/matches', methods=['GET'])
-def getPotentialMatches():
-    # Calculates the Total distance in km, using the current_user's and other user's longitude and latitude
-    # Then Joins the preferences table to get the users radius from preferences
-    # Allows the distance calculation from a specific table be a sub query 
-    # Gets the users who radius falls within your range and you within their range
+@login_required
+def get_matches():
+    """
+    Calculates the Total distance in km, using the current_user's and other user's longitude and latitude
+    Then Joins the preferences table to get the users radius from preferences
+    Allows the distance calculation from a specific table be a sub query 
+    Gets the users who radius falls within your range and you within their range
+    """
     query = text("""SELECT * FROM
-                            (SELECT u.*,
-                            (6307 * acos
-                                (cos(radians(:lat1)) * cos(radians(u.latitude)) * 
-                                cos(radians(u.longitude) - radians(:lon1)) + 
+                            (SELECT u.id, u.username, u.email, u.latitude, u.longitude, p.radius,
+                            (6371 * acos
+                                (cos(radians(:lat1)) * cos(radians(u.latitude)) *
+                                cos(radians(u.longitude) - radians(:lon1)) +
                                 sin(radians(:lat1)) * sin(radians(u.latitude))
                     )) AS distance
-                    FROM user u
-                    JOIN preference p ON u.id = p.user_id
+                    FROM user_profile u
+                    JOIN preferences_profile p ON u.id = p.user_id
+                    WHERE u.id != :current_user_id
                 ) AS sub
                 WHERE distance <= :my_radius
                 AND distance <= sub.radius
@@ -206,12 +188,15 @@ def getPotentialMatches():
     results = db.session.execute(query,{
         'lat1' : current_user.latitude,
         'lon1' : current_user.longitude,
-        'myradius' : current_user.preference.radius
+        'current_user_id': current_user.id,
+        'my_radius' : current_user.preference.radius
         }).fetchall()
-    return jsonify(dict(user) for user in results)
+    return jsonify([dict(user._mapping) for user in results])
 
-@app.route('/api/interact', methods=['POST']) 
-def Interaction():
+
+@app.route('/api/interact', methods=['POST'])
+@login_required
+def add_interaction():
     # Retrieve data from json body
     data = request.get_json()
     
@@ -226,7 +211,9 @@ def Interaction():
     db.session.commit()
     return jsonify({'message': "Interaction Complete"})
 
+
 @app.route('/api/interact', methods=['GET'])
+@login_required
 def matchMade():
     # Filters the Interactions list to find the the current users interactions as a list
     interact= Interactions.query.filter_by(from_user=current_user.id, action='like').all()
@@ -241,6 +228,7 @@ def matchMade():
                 'user_id': i.to_user
             })
     return jsonify(matches), 200
+
 
 def checkMutualConnections(user1, user2):
     # Check if the user1 liked user2
@@ -257,33 +245,50 @@ def checkMutualConnections(user1, user2):
     return False
 
 
-@app.route('/api/favorite', methods=['POST'])
+@app.route('/api/favourite', methods=['POST'])
+@login_required
 def add_favourite():
     # Retrieve data from json body
     data = request.get_json()
+    favorite_user_id = data['user_id']
 
-    # Creates a group of the User who favourtied and user who is being favourited
+    existing_favourite = Favorite.query.filter_by(
+        user_id=current_user.id,
+        favorite_id=favorite_user_id
+    ).first()
+
+    if existing_favourite:
+        return jsonify({'message': 'Favourite already added'}), 409
+
+    # Creates a group of the User who favourited and user who is being favourited
     fav = Favorite(
         user_id=current_user.id,
-        favorite_id= data['user_id']
+        favorite_id=favorite_user_id
     )
     # Add the favourited user to the database
     db.session.add(fav)
     db.session.commit()
 
-    return jsonify({'messsage': 'Successfully Added Favourties'})
+    return jsonify({'message': 'Successfully Added Favourites'})
 
-@app.route('/api/favorites', methods=['GET'])
-def get_favorties():
-    favorite = db.session.query(Users).join(Favorite, Users.id == Favorite.favorite_id).filter(
+
+@app.route('/api/favourite', methods=['GET'])
+@login_required
+def get_favourites():
+    favorite = db.session.query(Users, Profile).join(
+        Favorite, Users.id == Favorite.favorite_id
+    ).outerjoin(
+        Profile, Profile.user_id == Users.id
+    ).filter(
         Favorite.user_id == current_user.id
-        ).all()
+    ).all()
+
     f_lst = [
         {
-            'id': f.id,
-            'username': f.username,
-            'age': f.age
-        } for f in favorite
+            'id': user.id,
+            'username': user.username,
+            'age': profile.age if profile else None
+        } for user, profile in favorite
     ]
     return jsonify({'favourite': f_lst})
 
@@ -303,9 +308,12 @@ def createChat(user1, user2):
         )
         db.session.add(room)
         db.session.commit()
+
     return jsonify({'Message':'ChatRoom was created'})
-        
-@app.route('/api/getChat', methods=['GET'])
+
+
+@app.route('/api/chat', methods=['GET'])
+@login_required
 def get_chat():
     # Filters for any chatroom with the current user
     rooms = ChatRoom.query.filter(
@@ -331,9 +339,10 @@ def get_chat():
         })
     return jsonify(results),200
 
+
 @app.route('/api/message', methods=['POST'])
+@login_required
 def send_message():
-    # Retrieve data from json body
     data = request.get_json()
 
     # Creates a group chat data
@@ -348,12 +357,14 @@ def send_message():
 
     return jsonify({'Message':'Successfully stored message in the database'})
 
+
 @app.route('/api/message/<int:chatroom_id>', methods=['GET'])
+@login_required
 def get_message(chatroom_id):
     # Creates messages for a chatroom based url room selected and order each message accordingly 
     messages = Chat.query.filter_by(
         chatroom_id = chatroom_id
-    ).order_by(Chat.timestamp.asc()).all()
+    ).order_by(Chat.id.asc()).all()
 
     # Store both users of the chatroom and there messages in a list of results
     result = [
@@ -367,16 +378,15 @@ def get_message(chatroom_id):
 
 
 @app.route('/api/search', methods=['GET'])
+@login_required
 def search():
-    #Collect all the data from the urls from the frontend
+    # Collect all the search filters from the URL query string.
     age_min = request.args.get('age_min', type=int)
     age_max = request.args.get('age_max', type=int)
     interest = request.args.get('interest')
     use_distance = request.args.get('radius', type=float)
-    matches = request.args.get('matches', type=bool)
+    matches = request.args.get('matches', '').lower() == 'true'
     sort = request.args.get('sort')
-    # Creates a query for the User's table
-    search_query = Users.query
 
     distance = 6371 * func.acos(
         func.cos(func.radians(current_user.latitude)) *
@@ -386,37 +396,77 @@ def search():
         func.sin(func.radians(Users.latitude))
     )
 
-    # Checks if the url contains a max and min age and then filters the table based on the age
-    if age_min and age_max:
-        search_query = search_query.filter(Users.age.between(age_min,age_max))
-    # Checks if the url contains an interest then checks userIDs that are associated with the interest ID then display those users
+    search_query = db.session.query(
+        Users,
+        Profile,
+        distance.label('distance')
+    ).join(
+        Profile, Profile.user_id == Users.id
+    ).filter(
+        Users.id != current_user.id
+    )
+
+    # Filter by age using the profile table, where age is stored.
+    if age_min is not None:
+        search_query = search_query.filter(Profile.age >= age_min)
+    if age_max is not None:
+        search_query = search_query.filter(Profile.age <= age_max)
+
+    # Filter by users connected to the requested interest.
     if interest:
-        search_query = search_query.join(UserInterests).join(Interest).filter(Interest.name == interest)
-    # Checks if the url contains a match and gets the matched Ids from the matchMade function and filters the user table based on those matched Ids
+        search_query = search_query.join(
+            UserInterests, UserInterests.user_id == Users.id
+        ).join(
+            Interest, Interest.id == UserInterests.interest_id
+        ).filter(
+            Interest.name == interest
+        )
+
+    # Filter to users with mutual likes.
     if matches:
-        match_id = [m['user_id'] for m in matchMade()]
-        search_query = search_query.filter(Users.id.in_(match_id))
+        liked_by_me = db.session.query(Interactions.to_user).filter(
+            Interactions.from_user == current_user.id,
+            Interactions.action == 'like'
+        )
+        liked_me = db.session.query(Interactions.from_user).filter(
+            Interactions.to_user == current_user.id,
+            Interactions.action == 'like'
+        )
+        search_query = search_query.filter(
+            Users.id.in_(liked_by_me),
+            Users.id.in_(liked_me)
+        )
+
     if use_distance:
         radius = current_user.preference.radius
-        search_query = search_query.add_column(distance.label('distance')).filter(
-            distance <= radius
-        )
+        search_query = search_query.filter(distance <= radius)
     
-    # Apply Sorting on Search
+    # Apply sorting on search results.
     if sort =='newest':
-        search_query = search_query.order_by(Users.id.asc())
-    elif sort == 'oldest':
         search_query = search_query.order_by(Users.id.desc())
+    elif sort == 'oldest':
+        search_query = search_query.order_by(Users.id.asc())
     
-    # Gets a list of the query results and stores and displays the results using the user credentials
+    # Return user account data together with profile fields.
     s_result = search_query.all()
     result = [{
         "id": user.id,
         "username": user.username,
-        "age": user.age
-    } for user in s_result]
+        "age": profile.age,
+        "bio": profile.Bio,
+        "location": profile.location,
+        "photo": profile.photo,
+        "distance": round(calculated_distance, 2) if calculated_distance is not None else None
+    } for user, profile, calculated_distance in s_result]
 
     return jsonify({'result': result}),200
+
+
+@login_manager.user_loader
+def load_user(id):
+    return db.session.execute(db.select(Users).filter_by(id=id)).scalar()
+
+
 ###
 # The functions below should be applicable to all Flask apps.
 ###
@@ -435,6 +485,7 @@ def form_errors(form):
             error_messages.append(message)
 
     return error_messages
+
 
 @app.route('/<file_name>.txt')
 def send_text_file(file_name):
