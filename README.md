@@ -43,10 +43,268 @@ Testing
 ```
 ## Setup Instructions
 
+#### Clone the Repository
+```sh
+$ git clone <repository-url>
+$ cd Info3180_GroupProject
+```
+#### Create and Activate Virtual Environment
+```sh
+$ python -m venv venv
+$ .\venv\Scripts\activate
+```
+#### Install Backend Dependencies
+```sh
+$ pip install -r requirements.txt
+```
+#### Configure Environment Variables
+```sh
+$ FLASK_APP=app.py
+$ FLASK_ENV=development
+$ SECRET_KEY=your_secret_key
+$ DATABASE_URL=mysql://username:password@localhost/driftdater
+$ UPLOAD_FOLDER=uploads
+```
+#### Create Database
+```sh
+$ CREATE DATABASE driftdater;
+
+$ SQL Shell inputs below:
+
+$ create user "admin_user"; 
+$ create database "driftdater"; 
+$ \password admin_user 
+$ alter database driftdate owner to admin_user; 
+```
+#### Run Database Migrations
+```sh
+$ Once you create routing of your database in the app and create your first table and connect to the database on pgAdmin4 then run:
+
+$ flask db init
+$ flask db migrate
+$ flask db upgrade 
+```
+#### Start Flask Backend
+```sh
+$ flask --app app --debug run
+```
+#### Install Frontend Dependencies
+```sh
+$ npm install
+```
+#### Start Vue Development Server
+```sh
+$ npm run dev
+```
+#### Configure Vite Proxy
+```sh
+$ server: {
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8080',
+      changeOrigin: true
+    }
+  }
+}
+```
 ## Known Issues and Limitations
 
 ## API Documentation
 
+#### Create Profile
+```sh
+$ POST /api/profile
+$ response:
+{
+  "success": true,
+  "message": "Profile Updated"
+}
+$ Description: 
+$ Creates a user profile, uploads a profile photo, stores preferences, and assigns interests.
+```
+#### Edit Profile
+```sh
+$ POST /api/editprofile
+$ response:
+{
+  "success": true,
+  "message": "Profile Edited"
+}
+$ Description: 
+$ Updates an existing user profile, preferences, interests, and optional profile image.
+```
+#### Update User Location
+```sh
+$ POST /api/updatelocation
+$ response:
+{
+  "message": "Location Updated"
+}
+$ Description: 
+$ Updates the logged-in user's GPS coordinates.
+```
+#### Get Potential Matches
+```sh
+$ GET /api/matches
+$ response:
+[
+  {
+    "id": 4,
+    "username": "Ashley",
+    "distance": 5.2
+  }
+]
+$ Description: 
+$ Returns nearby users based on geographic distance and user radius preferences.
+```
+#### Login User
+```sh
+$ POST /api/login
+$ response:
+{
+  "success": true
+}
+{
+  "success": false,
+  "message": "Account does not exist"
+}
+{
+  "success": false,
+  "message": "Incorrect password"
+}
+$ Description: 
+$ Authenticates a user using email and password.
+```
+#### Register User
+```sh
+$ POST /api/registration
+$ response:
+{
+  "success": true,
+  "message": "User created"
+}
+{
+  "success": false,
+  "message": "Passwords must match"
+}
+{
+  "success": false,
+  "message": "Email already in use"
+}
+{
+  "success": false,
+  "message": "User already exists"
+}
+$ Description: 
+$ Creates a new user account and logs the user in.
+```
+
+#### Logout User
+```sh
+$ GET /api/logout
+$ response:
+{
+  "success": true,
+  "message": "User Logged Out"
+}
+$ Description: 
+$ Logs out the currently authenticated user.
+```
+
+#### Get Mutual Matches
+```sh
+$ GET /api/interact
+$ response:
+[
+  {
+    "user_id": 7
+  }
+]
+$ Description: 
+$ Returns users who mutually liked each other and automatically creates a chatroom.
+```
+#### Add Favorite
+```sh
+$ POST /api/favorite
+$ response:
+{
+  "messsage": "Successfully Added Favourties"
+}
+$ Description: 
+$ Adds another user to the current user's favorites list.
+```
+#### Get Favorites
+```sh
+$ GET /api/favorites
+$ response:
+{
+  "favourite": [
+    {
+      "id": 2,
+      "username": "Jordan",
+      "age": 22
+    }
+  ]
+}
+$ Description: 
+$ Returns all users favorited by the current user.
+```
+#### Get Chatrooms
+```sh
+$ GET /api/getChat
+$ response:
+[
+  {
+    "chatroom_id": 1,
+    "user_id": 5,
+    "username": "Ashley"
+  }
+]
+$ Description: 
+$ Returns all chatrooms associated with the current user.
+```
+#### Send Message
+```sh
+$ POST /api/message
+$ response:
+{
+  "Message": "Successfully stored message in the database"
+}
+$ Description: 
+$ Stores a message inside a chatroom.
+```
+
+#### Get Messages
+```sh
+$ GET /api/message/<chatroom_id>
+$ response:
+[
+  {
+    "sender_id": 2,
+    "message": "Hey!",
+    "chatroom_id": 1
+  }
+]
+$ Description: 
+$ Returns all messages for a specific chatroom ordered by timestamp.
+```
+
+#### Search Users
+```sh
+$ GET /api/search
+$ response:
+{
+  "result": [
+    {
+      "id": 4,
+      "username": "Chris",
+      "age": 21
+    }
+  ]
+}
+$ Description: 
+$ Searches for users using filters such as age range, interests, distance, and matches. ordered by timestamp.
+```
 # INFO3180 VueJS and Flask Starter
 
 This template should help get you started developing with Vue 3 on the frontend and Flask as an API on the backend.

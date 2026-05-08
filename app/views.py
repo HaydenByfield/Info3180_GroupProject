@@ -29,9 +29,7 @@ def get_crsf():
 
 @app.route('/api/login', methods = ['POST'])#login function
 def login():
-    #form = LoginForm()
-    #if form.validate_on_submit():
-    #gets the data from the json
+   
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -51,11 +49,7 @@ def login():
 
 @app.route('/api/registration', methods=['POST'])
 def registration():#registration function
-    #form = RegistrationForm
-
-    #if form.validate_on_submit()
-
-    #return redirect(url_for('index'))
+    
     data = request.get_json() #get the data from the json
     if not data:
         return jsonify({"success": False, "message": "No JSON received"}), 400
