@@ -1,44 +1,59 @@
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import ProfileCard from "@/components/ProfileCard.vue";
 
 const router = useRouter();
 
-const matches = ref([
-  {
-    id: 1,
-    username: "Alice Wonder",
-    age: 25,
-    location: "Kingston",
-    bio: "Love hiking and adventure. Let's explore the world together.",
-    interests: ["Hiking", "Travel", "Adventure"],
-    imageUrl: "https://placehold.co/600x400?text=Alice"
-  },
-  {
-    id: 2,
-    username: "Emma",
-    age: 23,
-    location: "Montego Bay",
-    bio: "Artist and creative soul. Let's create art together.",
-    interests: ["Art", "Music", "Food"],
-    imageUrl: "https://placehold.co/600x400?text=Emma"
-  },
-  {
-    id: 3,
-    username: "Noah",
-    age: 26,
-    location: "St. Andrew",
-    bio: "Always looking for good coffee, live music, and weekend plans.",
-    interests: ["Coffee", "Music", "Movies"],
-    imageUrl: "https://placehold.co/600x400?text=Noah"
+const matches = ref([]);
+const isLoading = ref(false);
+const errorMessage = ref("");
+
+function normaliseMatch(match) {
+  const id = match.id || match.user_id;
+
+  return {
+    id,
+    username: match.username || match.name || `Matched User #${id}`,
+    age: match.age || "N/A",
+    location: match.location || "Location not provided",
+    bio: match.bio || "No bio added yet.",
+    interests: match.interests || [],
+    photo: match.photo || null,
+    imageUrl: match.imageUrl || null,
+    chatroomId: match.chatroom_id || match.chatroomId || null
+  };
+}
+
+async function loadMatches() {
+  isLoading.value = true;
+  errorMessage.value = "";
+
+  try {
+    const response = await fetch("/api/interact", {
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to load matches.");
+    }
+
+    const data = await response.json();
+    matches.value = data.map(normaliseMatch);
+  } catch (error) {
+    console.error(error);
+    errorMessage.value = error.message || "Unable to load matches.";
+  } finally {
+    isLoading.value = false;
   }
-]);
+}
 
 function openMessages(profileId) {
   console.log("Open messages for profile:", profileId);
   router.push("/messages");
 }
+
+onMounted(loadMatches);
 </script>
 
 <template>
@@ -50,7 +65,15 @@ function openMessages(profileId) {
       </div>
     </section>
 
-    <section v-if="matches.length" class="matches-grid">
+    <section v-if="isLoading" class="empty">
+      <h2>Loading matches...</h2>
+    </section>
+
+    <section v-else-if="errorMessage" class="empty">
+      <h2>{{ errorMessage }}</h2>
+    </section>
+
+    <section v-else-if="matches.length" class="matches-grid">
       <ProfileCard
         v-for="match in matches"
         :key="match.id"

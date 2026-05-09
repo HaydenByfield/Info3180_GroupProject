@@ -1,4 +1,6 @@
 <script setup>
+import { computed, ref, watch } from "vue";
+
 /*ProfileCard is a  display card for user profiles
 
 
@@ -34,6 +36,21 @@ const emit = defineEmits(["interact", "favorite", "message"]);
 
 // Fallback image used when the backend does not return a profile picture.
 const defaultProfileImage = "https://placehold.co/600x400?text=Profile";
+const imageFailed = ref(false);
+
+const profileImage = computed(() => {
+  if (imageFailed.value) return defaultProfileImage;
+  if (props.profile.photo) return `/uploads/${props.profile.photo}`;
+
+  return defaultProfileImage;
+});
+
+watch(
+  () => props.profile.id,
+  () => {
+    imageFailed.value = false;
+  }
+);
 
 /*
   Returns the best available display name.
@@ -51,8 +68,9 @@ function getDisplayName() {
     <!-- Profile image uses backend image if available or it gives a placeholder. -->
     <img
       class="profile-image"
-      :src="profile.imageUrl || profile.profile_picture || defaultProfileImage"
+      :src="profileImage"
       :alt="`${getDisplayName()}'s profile picture`"
+      @error="imageFailed = true"
     />
 
     <div class="profile-content">

@@ -7,7 +7,7 @@ This file creates your application.
 import os
 import json
 from app import app, db, login_manager, csrf
-from flask import render_template, request, jsonify, send_file
+from flask import render_template, request, jsonify, send_file, send_from_directory
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import text, func
 from werkzeug.utils import secure_filename
@@ -22,12 +22,14 @@ app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 
 @app.route('/')
 def index():
+    """Return a simple API health message."""
     return jsonify(message="This is the beginning of our API")
 
 
 #works
 @app.route('/api/csrf-token', methods=['GET'])
 def get_csrf():
+    """Generate and return a CSRF token for protected requests."""
     return jsonify({'csrf_token': generate_csrf()})
 
 
@@ -35,6 +37,7 @@ def get_csrf():
 @app.route('/api/me', methods=['GET'])
 @login_required
 def get_current_user():
+    """Return the authenticated user's account and profile information."""
     profile = Profile.query.filter_by(user_id=current_user.id).first()
 
     return jsonify({
@@ -56,6 +59,7 @@ def get_current_user():
 #works
 @app.route('/api/users', methods=['POST'])
 def register_user():
+    """Create a new user account and log the user in."""
     data = request.get_json() 
     if not data:
         return jsonify({"success": False, "message": "No JSON received"}), 400
@@ -96,6 +100,7 @@ def register_user():
 #works
 @app.route('/api/login', methods = ['POST'])
 def login():
+    """Authenticate a user with email and password."""
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -116,6 +121,7 @@ def login():
 @app.route('/api/logout', methods=['POST'])
 @login_required
 def logout():
+    """Log out the currently authenticated user."""
     logout_user()
     return jsonify({'success': True, 'message': 'User Logged Out'})
 
@@ -124,6 +130,7 @@ def logout():
 @app.route('/api/profile', methods=['POST'])
 @login_required
 def create_profile():
+    """Create the authenticated user's profile, preferences, and interests."""
     name = request.form.get('name')
     age = request.form.get('age')
     location = request.form.get('location')
@@ -182,6 +189,7 @@ def create_profile():
 @app.route('/api/profile', methods=['PUT'])
 @login_required
 def update_profile():
+    """Update the authenticated user's existing profile details."""
     profile = Profile.query.filter_by(user_id=current_user.id).first()
     if profile is None:
         return jsonify({'success': False, 'message': 'Profile does not exist'}), 404
@@ -242,6 +250,7 @@ def update_profile():
 @app.route('/api/location', methods=['PATCH'])
 @login_required
 def updateLocation():
+    """Update the authenticated user's latitude and longitude."""
     data = request.get_json()
 
     current_user.latitude = data['latitude']
@@ -262,7 +271,8 @@ def get_matches():
     Gets the users who radius falls within your range and you within their range
     """
     query = text("""SELECT * FROM
-                            (SELECT u.id, u.username, u.email, u.latitude, u.longitude, p.radius,
+                            (SELECT u.id, u.username, u.email, u.latitude, u.longitude,
+                            p.radius, pr.photo, pr."Bio" AS bio, pr.age, pr.location,
                             (6371 * acos
                                 (cos(radians(:lat1)) * cos(radians(u.latitude)) *
                                 cos(radians(u.longitude) - radians(:lon1)) +
@@ -270,6 +280,7 @@ def get_matches():
                     )) AS distance
                     FROM user_profile u
                     JOIN preferences_profile p ON u.id = p.user_id
+                    JOIN p_profile pr ON u.id = pr.user_id
                     WHERE u.id != :current_user_id
                 ) AS sub
                 WHERE distance <= :my_radius
@@ -289,6 +300,7 @@ def get_matches():
 @app.route('/api/interact', methods=['POST'])
 @login_required
 def add_interaction():
+    """Store the authenticated user's like or pass interaction."""
     # Retrieve data from json body
     data = request.get_json()
     
@@ -309,6 +321,7 @@ def add_interaction():
     return jsonify({'message': "Interaction Complete"})
 
 def checkMutualLikes(user1, user2):
+    """Return whether two users have liked each other."""
     # Check if the user1 liked user2
     interact_1 = Interactions.query.filter_by(
         from_user = user1, to_user = user2, action='like'
@@ -323,6 +336,7 @@ def checkMutualLikes(user1, user2):
     return False
 
 def createChat(user1, user2):
+    """Create a chat room between two users if one does not already exist."""
     # Ensures no duplicate chatroom
     duplicate = ChatRoom.query.filter(
         ((ChatRoom.chat1_id == user1) & (ChatRoom.chat2_id == user2)) |
@@ -341,32 +355,52 @@ def createChat(user1, user2):
     return jsonify({'Message':'ChatRoom was created'})
 
 
-#OMIT THIS ROUTE
-#OPT FOR: CHECK FOR MUTUAL LIKES IN THE INTERACT ROUTE AND THEN CREATE A CHATROOM IF THERE IS A MATCH
-'''
+#works
 @app.route('/api/interact', methods=['GET'])
 @login_required
-def matchMade():
+def get_mutual_likes():
+    """Return users who have mutual likes with the authenticated user."""
     # Filters the Interactions list to find the the current users interactions as a list
     interact= Interactions.query.filter_by(from_user=current_user.id, action='like').all()
     matches = []
+    seen_user_ids = set()
     # Loops through the lst for any data needed from the current users interactions
     for i in interact:
         # Checks if the current user Id and the id of the other user is a match
-        if checkMutualConnections(current_user.id, i.to_user):
-            createChat(current_user.id, i.to_user)
-            # Create a list of matched users for the current_user
-            matches.append({
-                'user_id': i.to_user
-            })
+        if checkMutualLikes(current_user.id, i.to_user) and i.to_user not in seen_user_ids:
+            matched_user = Users.query.get(i.to_user)
+            profile = Profile.query.filter_by(user_id=i.to_user).first()
+            interests = db.session.query(Interest.name).join(
+                UserInterests, Interest.id == UserInterests.interest_id
+            ).filter(
+                UserInterests.user_id == i.to_user
+            ).all()
+            chatroom = ChatRoom.query.filter(
+                ((ChatRoom.chat1_id == current_user.id) & (ChatRoom.chat2_id == i.to_user)) |
+                ((ChatRoom.chat1_id == i.to_user) & (ChatRoom.chat2_id == current_user.id))
+            ).first()
+
+            if matched_user:
+                seen_user_ids.add(i.to_user)
+                matches.append({
+                    'id': matched_user.id,
+                    'user_id': matched_user.id,
+                    'username': matched_user.username,
+                    'age': profile.age if profile else None,
+                    'location': profile.location if profile else None,
+                    'bio': profile.Bio if profile else None,
+                    'photo': profile.photo if profile else None,
+                    'interests': [interest.name for interest in interests],
+                    'chatroom_id': chatroom.id if chatroom else None
+                })
     return jsonify(matches), 200
-'''
 
 
 #works
 @app.route('/api/favourite', methods=['POST'])
 @login_required
 def add_favourite():
+    """Add a user to the authenticated user's favourites."""
     # Retrieve data from json body
     data = request.get_json()
     favorite_user_id = data['user_id']
@@ -394,6 +428,7 @@ def add_favourite():
 @app.route('/api/favourite', methods=['GET'])
 @login_required
 def get_favourites():
+    """Return the authenticated user's favourite profiles."""
     favorite = db.session.query(Users, Profile).join(
         Favorite, Users.id == Favorite.favorite_id
     ).outerjoin(
@@ -416,6 +451,7 @@ def get_favourites():
 @app.route('/api/chats', methods=['GET'])
 @login_required
 def get_chats():
+    """Return all chat rooms for the authenticated user."""
     # Filters for any chatroom with the current user
     rooms = ChatRoom.query.filter(
         (ChatRoom.chat1_id == current_user.id) |
@@ -445,6 +481,7 @@ def get_chats():
 @app.route('/api/message', methods=['POST'])
 @login_required
 def send_message():
+    """Store a message in a chat room for the authenticated user."""
     data = request.get_json()
 
     # Creates a group chat data
@@ -464,6 +501,7 @@ def send_message():
 @app.route('/api/message/<int:chatroom_id>', methods=['GET'])
 @login_required
 def get_message(chatroom_id):
+    """Return all messages for a specific chat room."""
     # Creates messages for a chatroom based url room selected and order each message accordingly 
     messages = Chat.query.filter_by(
         chatroom_id = chatroom_id
@@ -483,6 +521,7 @@ def get_message(chatroom_id):
 @app.route('/api/search', methods=['GET'])
 @login_required
 def search():
+    """Search profiles using age, interest, distance, match, and sort filters."""
     # Collect all the search filters from the URL query string.
     age_min = request.args.get('age_min', type=int)
     age_max = request.args.get('age_max', type=int)
@@ -565,8 +604,16 @@ def search():
     return jsonify({'result': result}),200
 
 
+#works
+@app.route('/uploads/<path:filename>', methods=['GET'])
+def uploaded_file(filename):
+    """Serve an uploaded profile image by filename."""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
 @login_manager.user_loader
 def load_user(id):
+    """Load a user by ID for Flask-Login session authentication."""
     return db.session.execute(db.select(Users).filter_by(id=id)).scalar()
 
 
@@ -577,8 +624,8 @@ def load_user(id):
 # Here we define a function to collect form errors from Flask-WTF
 # which we can later use
 def form_errors(form):
+    """Collect form validation errors into a list of messages."""
     error_messages = []
-    """Collects form errors"""
     for field, errors in form.errors.items():
         for error in errors:
             message = u"Error in the %s field - %s" % (

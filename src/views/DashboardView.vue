@@ -27,6 +27,7 @@ fetch("/api/matches")
   .then(response => response.ok ? response.json() : [])
   .then(data => {
     mockData.splice(0, mockData.length, ...data);
+    console.log("Fetched matches:", mockData);
   })
   .catch(() => {
     mockData.splice(0, mockData.length);
@@ -41,7 +42,7 @@ function normalise(p) {
     location: p.location || "Location not provided",
     bio: p.bio || "No bio added yet.",
     interests: p.interests || [],
-    imageUrl: p.imageUrl || p.profile_picture || "https://placehold.co/600x400?text=Profile"
+    photo: p.photo || null
   };
 }
 
