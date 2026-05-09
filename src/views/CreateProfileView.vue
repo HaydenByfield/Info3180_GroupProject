@@ -20,7 +20,6 @@ const serverError = ref("");
 const successMessage = ref("");
 const csrf_token = ref("")
 
-
 const getCsrfToken = async () => {
     try{
         let response = await fetch('/api/csrf-token')
@@ -32,6 +31,7 @@ const getCsrfToken = async () => {
         console.log(error)
     }
 }
+
 onMounted(() => {
     getCsrfToken();
 })
@@ -63,6 +63,7 @@ async function handleCreateProfile(profileData) {
     }
     console.log("INTERESTS SENT:", profileData.interests);
     console.log("FORMDATA INTERESTS:", JSON.stringify(profileData.interests));
+
     const response = await fetch("/api/profile", {
       method: "POST",
       credentials: "include",

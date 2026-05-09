@@ -117,8 +117,3 @@ class Chat(db.Model):
     chatroom_id = db.Column(db.Integer, db.ForeignKey('chatroom_profile.id'))
     sender_id = db.Column(db.Integer, db.ForeignKey('user_profile.id'))
     message = db.Column(db.Text)
-
-
-
-
-    

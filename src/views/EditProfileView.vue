@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import ProfileForm from "@/components/profile/ProfileForm.vue";
+import { user } from "@/user/user.js";
 
 /*
 allows logged-in user update their existing profile.
@@ -19,8 +20,22 @@ const errorMessage = ref("");
 const serverError = ref("");
 
 const successMessage = ref("");
+const csrfToken = ref("");
 
 const router = useRouter();
+const { currentUser, loadCurrentUser } = user();
+
+async function getCsrfToken() {
+  if (csrfToken.value) return csrfToken.value;
+
+  const response = await fetch("/api/csrf-token", {
+    credentials: "include"
+  });
+  const data = await response.json();
+  csrfToken.value = data.csrf_token;
+
+  return csrfToken.value;
+}
 
 async function fetchCurrentProfile() {
   isLoading.value = true;
@@ -28,23 +43,13 @@ async function fetchCurrentProfile() {
   serverError.value = "";
 
   try {
-    const response = await fetch("/api/profile", {
-      method: "GET",
-      credentials: "include"
-    });
+    const loadedUser = await loadCurrentUser();
 
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.message || "Unable to load your profile.");
+    if (!loadedUser) {
+      throw new Error("Unable to load your profile.");
     }
 
-    /*
-      This supports either:
-      { profile: {...} }
-      or a direct profile object from the backend.
-    */
-    profile.value = data.profile || data;
+    profile.value = currentUser.value;
   } catch (error) {
     console.error(error);
     errorMessage.value =
@@ -60,6 +65,7 @@ async function handleUpdateProfile(profileData) {
   successMessage.value = "";
 
   try {
+    const token = await getCsrfToken();
     const formData = new FormData();
 
     formData.append("name", profileData.name);
@@ -79,6 +85,9 @@ async function handleUpdateProfile(profileData) {
     const response = await fetch("/api/profile", {
       method: "PUT",
       credentials: "include",
+      headers: {
+        "X-CSRFToken": token
+      },
       body: formData
     });
 
@@ -128,7 +137,7 @@ onMounted(() => {
       </button>
     </section>
 
-    <section v-else class="form-card">
+    <section v-else-if="profile" class="form-card">
       <p v-if="successMessage" class="success-message">
         {{ successMessage }}
       </p>

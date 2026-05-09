@@ -1,49 +1,36 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import ProfileCard from "@/components/ProfileCard.vue";
+import { user } from "@/user/user.js";
+
+const { currentUser, loadCurrentUser } = user();
+loadCurrentUser();
 
 const cards = ref([]);
 const loading = ref(false);
 const error = ref("");
 const toast = ref("");
-
-const currentUser = ref({
-  username: "Bob Builder",
-  age: 27,
-  location: "Kingston, Jamaica",
-  bio: "Software developer by day, photographer by night.",
-  imageUrl: "https://placehold.co/300x300?text=Bob"
-});
+const csrfToken = ref("");
+const fallbackUser = {
+  username: "there",
+  age: "N/A",
+  location: "Location not provided",
+  bio: "No bio added yet.",
+  imageUrl: "https://placehold.co/300x300?text=Profile"
+};
+const displayUser = computed(() => currentUser.value || fallbackUser);
 
 // temporary data for testing, swap out once /matches is ready
-const mockData = [
-  {
-    id: 1,
-    username: "Maya",
-    age: 22,
-    location: "Kingston",
-    bio: "Coffee lover, beach walks, and live music.",
-    interests: ["Music", "Travel", "Food"],
-    imageUrl: "https://placehold.co/600x400?text=Maya"
-  },
-  {
-    id: 2,
-    username: "Andre",
-    age: 24,
-    location: "St. Andrew",
-    bio: "Into fitness, movies, and weekend adventures.",
-    interests: ["Fitness", "Movies", "Hiking"],
-    imageUrl: "https://placehold.co/600x400?text=Andre"
-  },
-  {
-    id: 3,
-    username: "Leah",
-    age: 23,
-    location: "Portmore",
-    interests: ["Art", "Food", "Travel"],
-    imageUrl: "https://placehold.co/600x400?text=Leah"
-  }
-];
+const mockData = [];
+
+fetch("/api/matches")
+  .then(response => response.ok ? response.json() : [])
+  .then(data => {
+    mockData.splice(0, mockData.length, ...data);
+  })
+  .catch(() => {
+    mockData.splice(0, mockData.length);
+  });
 
 //helper function to help with displaying the profile info for user
 function normalise(p) {
@@ -69,13 +56,75 @@ function loadProfiles() {
   }, 400);
 }
 
-function onSwipe(id, action) {
-  cards.value = cards.value.filter(p => p.id !== id);
-  toast.value = action === "like" ? "Profile liked." : "Profile passed.";
+async function getCsrfToken() {
+  if (csrfToken.value) return csrfToken.value;
+
+  const response = await fetch("/api/csrf-token", {
+    credentials: "include"
+  });
+  const data = await response.json();
+  csrfToken.value = data.csrf_token;
+
+  return csrfToken.value;
 }
 
-function onFavourite(id) {
-  toast.value = `Profile #${id} added to favourites.`;
+async function onSwipe(id, action) {
+  error.value = "";
+
+  try {
+    const token = await getCsrfToken();
+    const response = await fetch("/api/interact", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": token
+      },
+      body: JSON.stringify({
+        user_id: id,
+        action
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to save interaction.");
+    }
+
+    cards.value = cards.value.filter(p => p.id !== id);
+    toast.value = (action === "like" ? "Profile liked." : "Profile passed.");
+
+  } catch (err) {
+    console.error(err);
+    error.value = "Could not save your interaction. Please try again.";
+  }
+}
+
+async function onFavourite(id) {
+  error.value = "";
+
+  try {
+    const token = await getCsrfToken();
+    const response = await fetch("/api/favourite", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": token
+      },
+      body: JSON.stringify({
+        user_id: id
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to add favourite.");
+    }
+
+    toast.value = `Profile #${id} added to favourites.`;
+  } catch (err) {
+    console.error(err);
+    error.value = "Could not add this profile to favourites. Please try again.";
+  }
 }
 
 onMounted(loadProfiles);
@@ -86,15 +135,15 @@ onMounted(loadProfiles);
     <section class="profile-summary">
       <img
         class="profile-summary-img"
-        :src="currentUser.imageUrl"
-        :alt="`${currentUser.username}'s profile photo`"
+        :src="displayUser.imageUrl"
+        :alt="`${displayUser.username}'s profile photo`"
       >
 
       <div class="profile-summary-content">
-        <h1>Welcome, {{ currentUser.username }}!</h1>
-        <p><strong>Age:</strong> {{ currentUser.age }}</p>
-        <p><strong>Location:</strong> {{ currentUser.location }}</p>
-        <p><strong>Bio:</strong> {{ currentUser.bio }}</p>
+        <h1>Welcome, {{ displayUser.username }}!</h1>
+        <p><strong>Age:</strong> {{ displayUser.age }}</p>
+        <p><strong>Location:</strong> {{ displayUser.location }}</p>
+        <p><strong>Bio:</strong> {{ displayUser.bio }}</p>
 
         <!--needs to link to edit profile component!-->
         <RouterLink :to="{ name: 'edit-profile' }" class="edit-profile-btn">
@@ -181,7 +230,8 @@ onMounted(loadProfiles);
 }
 
 .edit-profile-btn {
-  width: 100%;
+  display: inline-block;
+  width: auto;
   margin-top: 0.8rem;
   border: none;
   border-radius: 10px;
@@ -190,6 +240,7 @@ onMounted(loadProfiles);
   font-weight: 700;
   padding: 0.75rem 1.1rem;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .edit-profile-btn:hover {

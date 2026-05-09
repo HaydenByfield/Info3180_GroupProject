@@ -1,93 +1,148 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
+import { user } from "@/user/user.js";
 
-const activeChatId = ref(1);
+const { currentUser, loadCurrentUser } = user();
+const activeChatId = ref(null);
 const newMessage = ref("");
-
-// get actual chats here from the backend
-const chats = ref([
-  {
-    id: 1,
-    name: "Alice",
-    messages: [
-      {
-        id: 1,
-        text: "hihi how are you doing so far?",
-        sentByMe: true
-      },
-      {
-        id: 2,
-        text: "I'm doing great, thanks for asking! How about you?",
-        sentByMe: false
-      },
-      {
-        id: 3,
-        text: "I'm good too! Just enjoying the app so far.",
-        sentByMe: true
-      },
-      {
-        id: 4,
-        text: "Bye!",
-        sentByMe: true
-      }
-   ]
-  },
-  {
-    id: 2,
-    name: "Jordan",
-    messages: [
-      {
-        id: 1,
-        text: "Are we still on for later?",
-        sentByMe: false
-      }
-    ]
-  },
-  {
-    id: 3,
-    name: "Taylor",
-    messages: [
-      {
-        id: 1,
-        text: "That sounds good to me.",
-        sentByMe: false
-      }
-    ]
-  }
-]);
+const chats = ref([]);
+const errorMessage = ref("");
+const isLoadingChats = ref(false);
+const isLoadingMessages = ref(false);
+const csrfToken = ref("");
 
 const activeChat = computed(() => {
   return chats.value.find((chat) => chat.id === activeChatId.value);
 });
 
-function selectChat(chatId) {
-  activeChatId.value = chatId;
+async function loadChats() {
+  isLoadingChats.value = true;
+  errorMessage.value = "";
+
+  try {
+    await loadCurrentUser();
+
+    const response = await fetch("/api/chats", {
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to load chats.");
+    }
+
+    const data = await response.json();
+    chats.value = data.map((chat) => ({
+      id: chat.chatroom_id,
+      userId: chat.user_id,
+      name: chat.username,
+      messages: [],
+      messagesLoaded: false
+    }));
+  } catch (error) {
+    console.error(error);
+    errorMessage.value = error.message || "Unable to load chats.";
+  } finally {
+    isLoadingChats.value = false;
+  }
 }
 
-function sendMessage() {
+async function selectChat(chatId) {
+  activeChatId.value = chatId;
+
+  const chat = activeChat.value;
+  if (!chat || chat.messagesLoaded) {
+    return;
+  }
+
+  isLoadingMessages.value = true;
+  errorMessage.value = "";
+
+  try {
+    const response = await fetch(`/api/message/${chatId}`, {
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to load messages.");
+    }
+
+    const data = await response.json();
+    chat.messages = data.map((message, index) => ({
+      id: index + 1,
+      text: message.message,
+      sentByMe: message.sender_id === currentUser.value?.id
+    }));
+    chat.messagesLoaded = true;
+  } catch (error) {
+    console.error(error);
+    errorMessage.value = error.message || "Unable to load messages.";
+  } finally {
+    isLoadingMessages.value = false;
+  }
+}
+
+async function getCsrfToken() {
+  if (csrfToken.value) return csrfToken.value;
+
+  const response = await fetch("/api/csrf-token", {
+    credentials: "include"
+  });
+  const data = await response.json();
+  csrfToken.value = data.csrf_token;
+
+  return csrfToken.value;
+}
+
+async function sendMessage() {
   const text = newMessage.value.trim();
 
   if (!text || !activeChat.value) {
     return;
   }
 
-  // send the message to the backend here, and add it to the chat if it works
-  activeChat.value.messages.push({
-    id: Date.now(),
-    text,
-    sentByMe: true
-  });
+  try {
+    const token = await getCsrfToken();
+    const response = await fetch("/api/message", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": token
+      },
+      body: JSON.stringify({
+        chatroom_id: activeChat.value.id,
+        message: text
+      })
+    });
 
-  newMessage.value = "";
+    if (!response.ok) {
+      throw new Error("Unable to send message.");
+    }
+
+    activeChat.value.messages.push({
+      id: Date.now(),
+      text,
+      sentByMe: true
+    });
+
+    newMessage.value = "";
+  } catch (error) {
+    console.error(error);
+    errorMessage.value = error.message || "Unable to send message.";
+  }
 }
+
+onMounted(loadChats);
 </script>
 
 <template>
   <main class="messages-page">
     <h1>Messages</h1>
+    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
 
     <section class="messages-panel">
       <aside class="chat-list" aria-label="Active chats">
+        <p v-if="isLoadingChats" class="chat-list-status">Loading chats...</p>
         <button
           v-for="chat in chats"
           :key="chat.id"
@@ -102,6 +157,7 @@ function sendMessage() {
 
       <section v-if="activeChat" class="chat-box" :aria-label="`Chat with ${activeChat.name}`">
         <div class="chat-messages">
+          <p v-if="isLoadingMessages" class="chat-status">Loading messages...</p>
           <p
             v-for="message in activeChat.messages"
             :key="message.id"
@@ -122,6 +178,11 @@ function sendMessage() {
           <button type="submit">Send</button>
         </form>
       </section>
+
+      <section v-else class="empty-chat">
+        <p v-if="chats.length">Select a chat to view messages.</p>
+        <p v-else>You do not have any chats yet.</p>
+      </section>
     </section>
   </main>
 </template>
@@ -139,6 +200,12 @@ function sendMessage() {
   font-size: 2.2rem;
 }
 
+.error-message {
+  margin: 0 0 1rem;
+  color: #c0392b;
+  font-weight: 700;
+}
+
 .messages-panel {
   display: grid;
   grid-template-columns: minmax(190px, 260px) 1fr;
@@ -153,6 +220,14 @@ function sendMessage() {
 .chat-list {
   border-right: 1px solid #ededed;
   background: #fafafa;
+}
+
+.chat-list-status,
+.chat-status,
+.empty-chat p {
+  margin: 0;
+  padding: 1rem;
+  color: #666;
 }
 
 .chat-list-item {
@@ -177,6 +252,12 @@ function sendMessage() {
   display: grid;
   grid-template-rows: 1fr auto;
   min-width: 0;
+}
+
+.empty-chat {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
 }
 
 .chat-messages {

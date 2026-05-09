@@ -23,9 +23,11 @@ const getCsrfToken = async () => {
         console.log(error)
     }
 }
+
 onMounted(() => {
     getCsrfToken();
 })
+
 function handleRegister() {
   errorMessage.value = "";
 
@@ -41,12 +43,15 @@ function handleRegister() {
 
   navigator.geolocation.getCurrentPosition(async(position) =>{
     try{
-      let response = await fetch('/api/registration',{
+      let response = await fetch('/api/users',{
         method: 'POST',
-        headers: {'Content-Type': 'application/json','X-CSRFToken': csrf_token.value},
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token.value
+        },
         body: JSON.stringify({
           username: username.value,
-          password:password.value,
+          password: password.value,
           email: email.value,
           confirmpassword: confirmPassword.value,
           latitude: position.coords.latitude,
@@ -55,6 +60,7 @@ function handleRegister() {
       })
       
       let data = await response.json()
+
       if(response.ok && data.success){
         message.value = data.message
         console.log(message)
@@ -74,10 +80,6 @@ function handleRegister() {
     email: email.value,
     password: password.value
   });
-
-  //after a successful registration i want to send the user to a profile setup
-  
-
 }
 </script>
 

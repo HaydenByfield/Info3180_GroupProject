@@ -24,10 +24,34 @@ app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 def index():
     return jsonify(message="This is the beginning of our API")
 
+
 #works
 @app.route('/api/csrf-token', methods=['GET'])
 def get_csrf():
     return jsonify({'csrf_token': generate_csrf()})
+
+
+#works
+@app.route('/api/me', methods=['GET'])
+@login_required
+def get_current_user():
+    profile = Profile.query.filter_by(user_id=current_user.id).first()
+
+    return jsonify({
+        'id': current_user.id,
+        'username': current_user.username,
+        'email': current_user.email,
+        'profile': {
+            'name': profile.name if profile else None,
+            'age': profile.age if profile else None,
+            'location': profile.location if profile else None,
+            'bio': profile.Bio if profile else None,
+            'relationship': profile.relationship if profile else None,
+            'occupation': profile.occupation if profile else None,
+            'photo': profile.photo if profile else None
+        } if profile else None
+    })
+
 
 #works
 @app.route('/api/users', methods=['POST'])
@@ -68,6 +92,7 @@ def register_user():
     else:
         return jsonify({'success': False, 'message': 'User already exists'})
 
+
 #works
 @app.route('/api/login', methods = ['POST'])
 def login():
@@ -86,14 +111,18 @@ def login():
 
     return jsonify({'success': False, 'message': 'Incorrect password'}), 401
 
+
+#works
 @app.route('/api/logout', methods=['POST'])
 @login_required
-def logout(): #logout function
-    logout_user(current_user)
+def logout():
+    logout_user()
     return jsonify({'success': True, 'message': 'User Logged Out'})
 
 
+#works
 @app.route('/api/profile', methods=['POST'])
+@login_required
 def create_profile():
     name = request.form.get('name')
     age = request.form.get('age')
@@ -146,6 +175,67 @@ def create_profile():
         db.session.add(user_interest) #adds user to database
     db.session.commit() #saves user
 
+    return jsonify({'success': True, 'message': 'Profile Created'})
+
+
+#works
+@app.route('/api/profile', methods=['PUT'])
+@login_required
+def update_profile():
+    profile = Profile.query.filter_by(user_id=current_user.id).first()
+    if profile is None:
+        return jsonify({'success': False, 'message': 'Profile does not exist'}), 404
+
+    name = request.form.get('name')
+    age = request.form.get('age')
+    location = request.form.get('location')
+    relationship = request.form.get('relationshipGoal')
+    bio = request.form.get('bio')
+    occupation = request.form.get('occupation')
+    interests = request.form.get('interests')
+    radius = request.form.get('radius')
+    photo = request.files.get('profilePhoto')
+
+    if photo:
+        filename = secure_filename(photo.filename)
+        photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        profile.photo = filename
+
+    profile.name = name
+    profile.age = age
+    profile.location = location
+    profile.relationship = relationship
+    profile.Bio = bio
+    profile.occupation = occupation
+
+    user_preferences = Preferences.query.filter_by(user_id=current_user.id).first()
+    if user_preferences:
+        user_preferences.radius = radius
+    else:
+        user_preferences = Preferences(
+            user_id=current_user.id,
+            radius=radius
+        )
+        db.session.add(user_preferences)
+
+    UserInterests.query.filter_by(user_id=current_user.id).delete()
+    interests_list = json.loads(interests)
+
+    for interest_name in interests_list:
+        existing_interest = Interest.query.filter_by(name=interest_name).first()
+        if not existing_interest:
+            existing_interest = Interest(name=interest_name)
+            db.session.add(existing_interest)
+            db.session.flush()
+
+        user_interest = UserInterests(
+            user_id=current_user.id,
+            interest_id=existing_interest.id
+        )
+        db.session.add(user_interest)
+
+    db.session.commit()
+
     return jsonify({'success': True, 'message': 'Profile Updated'})
 
 
@@ -161,6 +251,7 @@ def updateLocation():
     return jsonify({'message' : "Location Updated"})
 
 
+#works
 @app.route('/api/matches', methods=['GET'])
 @login_required
 def get_matches():
@@ -194,6 +285,7 @@ def get_matches():
     return jsonify([dict(user._mapping) for user in results])
 
 
+#works
 @app.route('/api/interact', methods=['POST'])
 @login_required
 def add_interaction():
@@ -209,9 +301,49 @@ def add_interaction():
     # Add the favourited user to the database
     db.session.add(interaction)
     db.session.commit()
+
+    # check for mutual like and create chatroom if there is a match
+    if data['action'] == 'like' and checkMutualLikes(current_user.id, data['user_id']):
+        createChat(current_user.id, data['user_id'])
+
     return jsonify({'message': "Interaction Complete"})
 
+def checkMutualLikes(user1, user2):
+    # Check if the user1 liked user2
+    interact_1 = Interactions.query.filter_by(
+        from_user = user1, to_user = user2, action='like'
+    ).first()
+    # Checks if the user2 also liked user1
+    interact_2 = Interactions.query.filter_by(
+        from_user = user2, to_user = user1, action='like'
+    ).first()
+    # If both are true it returns a match otherwise returns false
+    if interact_1 and interact_2:
+        return True
+    return False
 
+def createChat(user1, user2):
+    # Ensures no duplicate chatroom
+    duplicate = ChatRoom.query.filter(
+        ((ChatRoom.chat1_id == user1) & (ChatRoom.chat2_id == user2)) |
+        ((ChatRoom.chat1_id == user2) & (ChatRoom.chat2_id == user1))
+    ).first()
+
+    # Creates a Chatroom and Stores it in the database
+    if not duplicate:
+        room = ChatRoom (
+            chat1_id = user1, 
+            chat2_id = user2
+        )
+        db.session.add(room)
+        db.session.commit()
+
+    return jsonify({'Message':'ChatRoom was created'})
+
+
+#OMIT THIS ROUTE
+#OPT FOR: CHECK FOR MUTUAL LIKES IN THE INTERACT ROUTE AND THEN CREATE A CHATROOM IF THERE IS A MATCH
+'''
 @app.route('/api/interact', methods=['GET'])
 @login_required
 def matchMade():
@@ -228,23 +360,10 @@ def matchMade():
                 'user_id': i.to_user
             })
     return jsonify(matches), 200
+'''
 
 
-def checkMutualConnections(user1, user2):
-    # Check if the user1 liked user2
-    interact_1 = Interactions.query.filter_by(
-        from_user = user1, to_user = user2, action='like'
-    ).first()
-    # Checks if the user2 also liked user1
-    interact_2 = Interactions.query.filter_by(
-        from_user = user2, to_user = user1, action='like'
-    ).first()
-    # If both are true it returns a match otherwise returns false
-    if interact_1 and interact_2:
-        return True
-    return False
-
-
+#works
 @app.route('/api/favourite', methods=['POST'])
 @login_required
 def add_favourite():
@@ -293,28 +412,10 @@ def get_favourites():
     return jsonify({'favourite': f_lst})
 
 
-def createChat(user1, user2):
-    # Ensures no duplicate chatroom
-    duplicate = ChatRoom.query.filter(
-        ((ChatRoom.chat1_id == user1) & (ChatRoom.chat2_id == user2)) |
-        ((ChatRoom.chat1_id == user2) & (ChatRoom.chat2_id == user1))
-    ).first()
-
-    # Creates a Chatroom and Stores it in the database
-    if not duplicate:
-        room = ChatRoom (
-            chat1_id = user1, 
-            chat2_id = user2
-        )
-        db.session.add(room)
-        db.session.commit()
-
-    return jsonify({'Message':'ChatRoom was created'})
-
-
-@app.route('/api/chat', methods=['GET'])
+#works
+@app.route('/api/chats', methods=['GET'])
 @login_required
-def get_chat():
+def get_chats():
     # Filters for any chatroom with the current user
     rooms = ChatRoom.query.filter(
         (ChatRoom.chat1_id == current_user.id) |
@@ -340,6 +441,7 @@ def get_chat():
     return jsonify(results),200
 
 
+#works
 @app.route('/api/message', methods=['POST'])
 @login_required
 def send_message():
@@ -358,6 +460,7 @@ def send_message():
     return jsonify({'Message':'Successfully stored message in the database'})
 
 
+#works
 @app.route('/api/message/<int:chatroom_id>', methods=['GET'])
 @login_required
 def get_message(chatroom_id):
