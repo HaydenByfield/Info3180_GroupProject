@@ -441,7 +441,10 @@ def get_favourites():
         {
             'id': user.id,
             'username': user.username,
-            'age': profile.age if profile else None
+            'age': profile.age if profile else None,
+            'photo': profile.photo if profile else None,
+            'bio': profile.Bio if profile else None,
+            'location': profile.location if profile else None
         } for user, profile in favorite
     ]
     return jsonify({'favourite': f_lst})
