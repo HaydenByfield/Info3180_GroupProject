@@ -93,6 +93,11 @@ async function handleUpdateProfile(profileData) {
 
     const data = await response.json().catch(() => ({}));
 
+    if (response.status === 404) {
+      router.push("/profile/create");
+      return;
+    }
+    
     if (!response.ok) {
       throw new Error(data.message || "Unable to update profile.");
     }
